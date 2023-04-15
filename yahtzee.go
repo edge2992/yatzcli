@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
@@ -104,7 +106,7 @@ func playTurn(player *Player) {
 	}
 	displayDice(dice)
 
-	category := chooseCategory(player)
+	category := chooseCategory(player, dice)
 	score := calculateScore(dice, category)
 	player.ScoreCard.Scores[category] = &score
 }
@@ -139,7 +141,16 @@ func displayDice(dice []Dice) {
 	fmt.Println()
 }
 
-func chooseCategory(player *Player) ScoreCategory {
+func categoryWithScore(dice []Dice, categories []string) []string {
+	options := make([]string, len(categories))
+	for i, cat := range categories {
+		score := calculateScore(dice, ScoreCategory(cat))
+		options[i] = cat + "\t(" + strconv.Itoa(score) + ")"
+	}
+	return options
+}
+
+func chooseCategory(player *Player, dice []Dice) ScoreCategory {
 	availableCategories := []string{}
 	for cat, score := range player.ScoreCard.Scores {
 		if score == nil {
@@ -150,10 +161,10 @@ func chooseCategory(player *Player) ScoreCategory {
 	selectedCategory := ""
 	prompt := &survey.Select{
 		Message: "Choose a category:",
-		Options: availableCategories,
+		Options: categoryWithScore(dice, availableCategories),
 	}
 	survey.AskOne(prompt, &selectedCategory)
-	return ScoreCategory(selectedCategory)
+	return ScoreCategory(strings.Split(selectedCategory, "\t")[0])
 }
 
 func getPlayerHoldInput(dice []Dice) []int {
