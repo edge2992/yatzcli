@@ -98,8 +98,8 @@ func playTurn(player *Player) {
 	rollDice(dice)
 	for rolls := 1; rolls < MaxRolls; rolls++ {
 		displayDice(dice)
-		holdInput := getPlayerHoldInput()
-		holdDice(dice, holdInput)
+		selectedIndices := getPlayerHoldInput(dice)
+		holdDice(dice, selectedIndices)
 		rollDice(dice)
 	}
 	displayDice(dice)
@@ -117,11 +117,10 @@ func rollDice(dice []Dice) {
 	}
 }
 
-func holdDice(dice []Dice, holdInput string) {
-	for _, ch := range holdInput {
-		index := int(ch - '1')
+func holdDice(dice []Dice, selectedIndices []int) {
+	for _, index := range selectedIndices {
 		if index >= 0 && index < len(dice) {
-			dice[index].Held = !dice[index].Held
+			dice[index].Held = true
 		}
 	}
 }
@@ -131,7 +130,6 @@ func displayDice(dice []Dice) {
 	for i := range dice {
 		if dice[i].Held {
 			color.Set(color.FgGreen)
-
 		} else {
 			color.Set(color.FgRed)
 		}
@@ -158,11 +156,29 @@ func chooseCategory(player *Player) ScoreCategory {
 	return ScoreCategory(selectedCategory)
 }
 
-func getPlayerHoldInput() string {
-	var holdInput string
-	fmt.Print("Enter the dice you want to hold (e.g. 123): ")
-	fmt.Scanln(&holdInput)
-	return holdInput
+func getPlayerHoldInput(dice []Dice) []int {
+	var selectedIndices []int
+
+	diceOptions := make([]string, len(dice))
+	diceChecked := []int{}
+	for i, die := range dice {
+		diceOptions[i] = fmt.Sprintf("%d", die.Value)
+		if die.Held {
+			diceChecked = append(diceChecked, i)
+		}
+	}
+	prompt := &survey.MultiSelect{
+		Message: "select the dice you want to hold (use space to select and tab to navigate):",
+		Options: diceOptions,
+		Default: diceChecked,
+	}
+
+	err := survey.AskOne(prompt, &selectedIndices)
+	if err != nil {
+		fmt.Print(err)
+		return nil
+	}
+	return selectedIndices
 }
 
 // ---------- Display Functions ----------
