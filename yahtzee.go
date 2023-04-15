@@ -6,23 +6,22 @@ import (
 )
 
 // ---------- Constants and Types ----------
-
 type ScoreCategory string
 
 const (
 	Ones          ScoreCategory = "Ones"
-	Twos                        = "Twos"
-	Threes                      = "Threes"
-	Fours                       = "Fours"
-	Fives                       = "Fives"
-	Sixes                       = "Sixes"
-	ThreeOfAKind                = "ThreeOfAKind"
-	FourOfAKind                 = "FourOfAKind"
-	FullHouse                   = "FullHouse"
-	SmallStraight               = "SmallStraight"
-	LargeStraight               = "LargeStraight"
-	Yahtzee                     = "Yahtzee"
-	Chance                      = "Chance"
+	Twos          ScoreCategory = "Twos"
+	Threes        ScoreCategory = "Threes"
+	Fours         ScoreCategory = "Fours"
+	Fives         ScoreCategory = "Fives"
+	Sixes         ScoreCategory = "Sixes"
+	ThreeOfAKind  ScoreCategory = "ThreeOfAKind"
+	FourOfAKind   ScoreCategory = "FourOfAKind"
+	FullHouse     ScoreCategory = "FullHouse"
+	SmallStraight ScoreCategory = "SmallStraight"
+	LargeStraight ScoreCategory = "LargeStraight"
+	Yahtzee       ScoreCategory = "Yahtzee"
+	Chance        ScoreCategory = "Chance"
 )
 
 const (
@@ -153,99 +152,11 @@ func displayAvailableCategories(player *Player) {
 	fmt.Println()
 }
 
-// ---------- Scoring Functions ----------
 func getPlayerHoldInput() string {
 	var holdInput string
 	fmt.Print("Enter the dice you want to hold (e.g. 123): ")
 	fmt.Scanln(&holdInput)
 	return holdInput
-}
-
-func calculateScore(dice []Dice, category ScoreCategory) int {
-	diceCounts := countDiceValues(dice)
-
-	switch category {
-	case Ones:
-		return diceCounts[0] * 1
-	case Twos:
-		return diceCounts[1] * 2
-	case Threes:
-		return diceCounts[2] * 3
-	case Fours:
-		return diceCounts[3] * 4
-	case Fives:
-		return diceCounts[4] * 5
-	case Sixes:
-		return diceCounts[5] * 6
-	case ThreeOfAKind:
-		for i, count := range diceCounts {
-			if count >= 3 {
-				return (i + 1) * 3
-			}
-		}
-	case FourOfAKind:
-		for i, count := range diceCounts {
-			if count >= 4 {
-				return (i + 1) * 4
-			}
-		}
-	case FullHouse:
-		hasThree := false
-		hasTwo := false
-		for _, count := range diceCounts {
-			if count == 2 {
-				hasTwo = true
-			} else if count == 3 {
-				hasThree = true
-			}
-		}
-		if hasTwo && hasThree {
-			return 25
-		}
-	case SmallStraight:
-		if (diceCounts[0] > 0 && diceCounts[1] > 0 && diceCounts[2] > 0 && diceCounts[3] > 0) ||
-			(diceCounts[1] > 0 && diceCounts[2] > 0 && diceCounts[3] > 0 && diceCounts[4] > 0) ||
-			(diceCounts[2] > 0 && diceCounts[3] > 0 && diceCounts[4] > 0 && diceCounts[5] > 0) {
-			return 30
-		}
-	case LargeStraight:
-		if (diceCounts[0] == 1 && diceCounts[1] == 1 && diceCounts[2] == 1 && diceCounts[3] == 1 && diceCounts[4] == 1) ||
-			(diceCounts[1] == 1 && diceCounts[2] == 1 && diceCounts[3] == 1 && diceCounts[4] == 1 && diceCounts[5] == 1) {
-			return 40
-		}
-	case Yahtzee:
-		for _, count := range diceCounts {
-			if count == 5 {
-				return 50
-			}
-		}
-	case Chance:
-		total := 0
-		for i, count := range diceCounts {
-			total += (i + 1) * count
-		}
-		return total
-	}
-
-	return 0
-}
-
-func countDiceValues(dice []Dice) []int {
-	counts := make([]int, 6)
-	for _, die := range dice {
-		counts[die.Value-1]++
-	}
-	return counts
-}
-
-func calculateTotalScore(scoreCard ScoreCard) int {
-	total := 0
-	for _, score := range scoreCard.Scores {
-		if score != nil {
-			total += *score
-		}
-	}
-	return total
 }
 
 // ---------- Display Functions ----------
