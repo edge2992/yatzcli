@@ -5,15 +5,7 @@ import (
 	"math/rand"
 )
 
-type Player struct {
-	Name      string
-	ScoreCard ScoreCard
-}
-
-type Dice struct {
-	Value int
-	Held  bool
-}
+// ---------- Constants and Types ----------
 
 type ScoreCategory string
 
@@ -33,10 +25,27 @@ const (
 	Chance                      = "Chance"
 )
 
+const (
+	NumberOfDice   = 5
+	MaxRolls       = 3
+	NumberOfRounds = 13
+)
+
+type Player struct {
+	Name      string
+	ScoreCard ScoreCard
+}
+
+type Dice struct {
+	Value int
+	Held  bool
+}
+
 type ScoreCard struct {
 	Scores map[ScoreCategory]*int
 }
 
+// ---------- Initialization Functions ----------
 func NewScoreCard() ScoreCard {
 	scoreCard := ScoreCard{
 		Scores: map[ScoreCategory]*int{
@@ -58,12 +67,6 @@ func NewScoreCard() ScoreCard {
 	return scoreCard
 }
 
-const (
-	NumberOfDice   = 5
-	MaxRolls       = 3
-	NumberOfRounds = 13
-)
-
 func createPlayers() []Player {
 	players := make([]Player, 2)
 	for i := 0; i < 2; i++ {
@@ -83,15 +86,13 @@ func createGameState(players []Player) map[string]*Player {
 	return gameState
 }
 
+// ---------- Gameplay Functions ----------
 func playTurn(player *Player) {
 	dice := make([]Dice, NumberOfDice)
 	rollDice(dice)
 	for rolls := 1; rolls < MaxRolls; rolls++ {
 		displayDice(dice)
-		var holdInput string
-		fmt.Print("Enter the dice you want to hold (1-5, eg. 134): ")
-		fmt.Scanln(&holdInput)
-
+		holdInput := getPlayerHoldInput()
 		holdDice(dice, holdInput)
 		rollDice(dice)
 	}
@@ -100,13 +101,6 @@ func playTurn(player *Player) {
 	category := chooseCategory(player)
 	score := calculateScore(dice, category)
 	player.ScoreCard.Scores[category] = &score
-}
-
-func displayFinalScores(players []Player) {
-	fmt.Println("\nFinal Scores:")
-	for _, player := range players {
-		fmt.Printf("%s: %d\n", player.Name, calculateTotalScore(player.ScoreCard))
-	}
 }
 
 func rollDice(dice []Dice) {
@@ -136,12 +130,7 @@ func displayDice(dice []Dice) {
 
 func chooseCategory(player *Player) ScoreCategory {
 	var category string
-	fmt.Println("Available categories:")
-	for cat, score := range player.ScoreCard.Scores {
-		if score == nil {
-			fmt.Printf("%s ", cat)
-		}
-	}
+	displayAvailableCategories(player)
 
 	fmt.Print("Enter the category you want to choose: ")
 	for {
@@ -152,6 +141,24 @@ func chooseCategory(player *Player) ScoreCategory {
 		}
 		fmt.Println("Invalid category or already scored. Please enter a valid category:")
 	}
+}
+
+func displayAvailableCategories(player *Player) {
+	fmt.Println("Available categories:")
+	for cat, score := range player.ScoreCard.Scores {
+		if score == nil {
+			fmt.Printf("%s ", cat)
+		}
+	}
+	fmt.Println()
+}
+
+// ---------- Scoring Functions ----------
+func getPlayerHoldInput() string {
+	var holdInput string
+	fmt.Print("Enter the dice you want to hold (e.g. 123): ")
+	fmt.Scanln(&holdInput)
+	return holdInput
 }
 
 func calculateScore(dice []Dice, category ScoreCategory) int {
@@ -239,6 +246,14 @@ func calculateTotalScore(scoreCard ScoreCard) int {
 		}
 	}
 	return total
+}
+
+// ---------- Display Functions ----------
+func displayFinalScores(players []Player) {
+	fmt.Println("\nFinal Scores:")
+	for _, player := range players {
+		fmt.Printf("%s: %d\n", player.Name, calculateTotalScore(player.ScoreCard))
+	}
 }
 
 func displayCurrentScoreboard(players []Player) {
