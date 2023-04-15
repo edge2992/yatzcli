@@ -3,6 +3,11 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"os"
+
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/fatih/color"
+	"github.com/olekukonko/tablewriter"
 )
 
 // ---------- Constants and Types ----------
@@ -70,8 +75,10 @@ func createPlayers() []Player {
 	players := make([]Player, 2)
 	for i := 0; i < 2; i++ {
 		var name string
-		fmt.Printf("Enter name for player %d: ", i+1)
-		fmt.Scanln(&name)
+		prompt := &survey.Input{
+			Message: fmt.Sprintf("Enter name for player %d:", i+1),
+		}
+		survey.AskOne(prompt, &name)
 		players[i] = Player{Name: name, ScoreCard: NewScoreCard()}
 	}
 	return players
@@ -122,34 +129,33 @@ func holdDice(dice []Dice, holdInput string) {
 func displayDice(dice []Dice) {
 	fmt.Print("Dice: ")
 	for i := range dice {
+		if dice[i].Held {
+			color.Set(color.FgGreen)
+
+		} else {
+			color.Set(color.FgRed)
+		}
 		fmt.Printf("%d ", dice[i].Value)
+		color.Unset()
 	}
 	fmt.Println()
 }
 
 func chooseCategory(player *Player) ScoreCategory {
-	var category string
-	displayAvailableCategories(player)
-
-	fmt.Print("Enter the category you want to choose: ")
-	for {
-		fmt.Scanln(&category)
-		cat := ScoreCategory(category)
-		if _, ok := player.ScoreCard.Scores[cat]; ok && player.ScoreCard.Scores[cat] == nil {
-			return cat
-		}
-		fmt.Println("Invalid category or already scored. Please enter a valid category:")
-	}
-}
-
-func displayAvailableCategories(player *Player) {
-	fmt.Println("Available categories:")
+	availableCategories := []string{}
 	for cat, score := range player.ScoreCard.Scores {
 		if score == nil {
-			fmt.Printf("%s ", cat)
+			availableCategories = append(availableCategories, string(cat))
 		}
 	}
-	fmt.Println()
+
+	selectedCategory := ""
+	prompt := &survey.Select{
+		Message: "Choose a category:",
+		Options: availableCategories,
+	}
+	survey.AskOne(prompt, &selectedCategory)
+	return ScoreCategory(selectedCategory)
 }
 
 func getPlayerHoldInput() string {
@@ -169,15 +175,28 @@ func displayFinalScores(players []Player) {
 
 func displayCurrentScoreboard(players []Player) {
 	fmt.Println("\nCurrent Scoreboard:")
+
+	table := tablewriter.NewWriter(os.Stdout)
+	header := []string{"Player"}
+
+	for _, category := range []ScoreCategory{Ones, Twos, Threes, Fours, Fives, Sixes, ThreeOfAKind, FourOfAKind, FullHouse, SmallStraight, LargeStraight, Yahtzee, Chance} {
+		header = append(header, string(category))
+	}
+	header = append(header, "Total")
+	table.SetHeader(header)
+
 	for _, player := range players {
-		fmt.Printf("%s:\n", player.Name)
-		for category, score := range player.ScoreCard.Scores {
+		row := []string{player.Name}
+		for _, category := range []ScoreCategory{Ones, Twos, Threes, Fours, Fives, Sixes, ThreeOfAKind, FourOfAKind, FullHouse, SmallStraight, LargeStraight, Yahtzee, Chance} {
+			score := player.ScoreCard.Scores[category]
 			if score != nil {
-				fmt.Printf("  %s: %d\n", category, *score)
+				row = append(row, fmt.Sprintf("%d", *score))
 			} else {
-				fmt.Printf("  %s: -\n", category)
+				row = append(row, "-")
 			}
 		}
-		fmt.Printf("  Total: %d\n\n", calculateTotalScore(player.ScoreCard))
+		row = append(row, fmt.Sprintf("%d", calculateTotalScore(player.ScoreCard)))
+		table.Append(row)
 	}
+	table.Render()
 }

@@ -5,8 +5,6 @@ import (
 )
 
 func main() {
-	// rand.Seed(time.Now().UnixNano())
-
 	// Initialize game state
 	players := createPlayers()
 	gameState := createGameState(players)
