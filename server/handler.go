@@ -4,19 +4,7 @@ import (
 	"encoding/gob"
 
 	"yatzcli/game"
-)
-
-type MessageType int
-
-const (
-	GameJoined MessageType = iota
-	GameLeft
-	GameStart
-	GameStarted
-	TurnPlayed
-	RollDice
-	UpdateGameState
-	GameOver
+	"yatzcli/messages"
 )
 
 func (s *Server) joinGame(player *game.Player, encoder *gob.Encoder) {
@@ -25,9 +13,9 @@ func (s *Server) joinGame(player *game.Player, encoder *gob.Encoder) {
 
 	s.players = append(s.players, player)
 
-	message := Message{
-		Type:    GameJoined,
-		Players: s.players,
+	message := messages.Message{
+		Type: messages.GameJoined,
+		// Players: s.players,
 	}
 	encoder.Encode(&message)
 }
@@ -43,8 +31,8 @@ func (s *Server) leaveGame(player *game.Player, encoder *gob.Encoder) {
 		}
 	}
 
-	message := Message{
-		Type:    GameLeft,
+	message := messages.Message{
+		Type:    messages.GameLeft,
 		Players: s.players,
 	}
 	encoder.Encode(&message)
@@ -62,9 +50,9 @@ func (s *Server) startGame(player *game.Player, encoder *gob.Encoder) {
 	s.gameStarted = true
 	s.currentPlayer = 0
 
-	message := Message{
-		Type:          GameStarted,
-		currentPlayer: s.players[s.currentPlayer].Name,
+	message := messages.Message{
+		Type:          messages.GameStarted,
+		CurrentPlayer: s.players[s.currentPlayer].Name,
 	}
 	encoder.Encode(&message)
 }
@@ -106,10 +94,10 @@ func (s *Server) updateGameState(player *game.Player, encoder *gob.Encoder) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	message := Message{
-		Type:          UpdateGameState,
+	message := messages.Message{
+		Type:          messages.UpdateGameState,
 		Players:       s.players,
-		currentPlayer: s.players[s.currentPlayer].Name,
+		CurrentPlayer: s.players[s.currentPlayer].Name,
 	}
 	encoder.Encode(&message)
 }
@@ -123,8 +111,8 @@ func (s *Server) gameOver(player *game.Player, encoder *gob.Encoder) {
 	}
 	s.gameStarted = false
 
-	message := Message{
-		Type:    GameOver,
+	message := messages.Message{
+		Type:    messages.GameOver,
 		Players: s.players,
 	}
 	encoder.Encode(&message)

@@ -1,10 +1,13 @@
 package client
 
 import (
+	"encoding/gob"
 	"fmt"
+	"log"
 	"net"
 
 	"yatzcli/game"
+	"yatzcli/messages"
 )
 
 const (
@@ -23,13 +26,37 @@ func NewClient() *Client {
 func (c *Client) Connect() {
 	conn, err := net.Dial("tcp", serverAddress)
 	if err != nil {
-		fmt.Println("Error connecting:", err.Error())
+		log.Println("Error connecting:", err.Error())
 		panic(err)
 	}
 	c.connection = conn
 	defer conn.Close()
 
-	fmt.Println("Connected to server")
+	log.Println("Connected to server")
 
-	// TODO: Implement communication betwrrn server and client
+	encoder := gob.NewEncoder(conn)
+	decoder := gob.NewDecoder(conn)
+
+	joinMessage := messages.Message{
+		Type: messages.GameJoined,
+	}
+	encoder.Encode(&joinMessage)
+
+	for {
+		message := &messages.Message{}
+		err := decoder.Decode(message)
+		if err != nil {
+			fmt.Println("Error decoding message:", err.Error())
+			break
+		}
+		log.Println("Recieved message:", message)
+
+		switch message.Type {
+		case messages.GameJoined:
+			log.Println("Game joined")
+			log.Println("Players:", message.Players)
+		default:
+			fmt.Println("Unknown message type:", message.Type)
+		}
+	}
 }

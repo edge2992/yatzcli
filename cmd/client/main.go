@@ -1,20 +1,12 @@
 package main
 
 import (
-	"fmt"
+	"yatzcli/client"
 )
 
 func main() {
-	addr := "localhost:8080"
-	// conn, err := net.Dial("tcp", addr)
-	// if err != nil {
-	// 	log.Fatalf("Error connecting to %s: %v", addr, err)
-	// }
-
-	fmt.Printf("Connected to Yahtzee server at %s\n", addr)
-
-	// gameClient := client.NewClient(conn)
-	// gameClient.Run()
+	client := client.NewClient()
+	client.Connect()
 }
 
 // package main

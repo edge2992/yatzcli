@@ -3,11 +3,13 @@ package server
 import (
 	"encoding/gob"
 	"fmt"
+	"log"
 	"net"
 	"strconv"
 	"sync"
 
 	"yatzcli/game"
+	"yatzcli/messages"
 )
 
 const (
@@ -24,13 +26,6 @@ type Server struct {
 }
 
 // TODO who am i for client
-type Message struct {
-	Type          MessageType
-	Players       []*game.Player
-	currentPlayer string
-	Dice          []game.Dice
-	Category      game.ScoreCategory
-}
 
 func NewServer() *Server {
 	return &Server{
@@ -45,23 +40,23 @@ func NewServer() *Server {
 func (s *Server) Start() {
 	listener, err := net.Listen("tcp", Port)
 	if err != nil {
-		fmt.Println("Error listening:", err.Error())
+		log.Printf("Error listening: %v", err.Error())
 		return
 	}
 	defer listener.Close()
 
-	fmt.Println("Listening for clients on port", Port)
+	log.Println("Listening for clients on port", Port)
 
 	for len(s.encoders) < MaxPlayers {
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println("Error accepting:", err.Error())
+			log.Println("Error accepting:", err.Error())
 			return
 		}
+		log.Println("Client connected")
 
 		encoder := gob.NewEncoder(conn)
 		decoder := gob.NewDecoder(conn)
-		defer conn.Close()
 
 		s.encoders = append(s.encoders, encoder)
 		player := game.NewPlayer("Player " + strconv.Itoa(len(s.encoders)))
@@ -72,28 +67,30 @@ func (s *Server) Start() {
 }
 
 func (s *Server) handleConnection(encoder *gob.Encoder, decoder *gob.Decoder, player *game.Player) {
+	log.Println("Handling connection for player", player.Name)
 	for {
-		message := &Message{}
+		message := &messages.Message{}
 		err := decoder.Decode(message)
 		if err != nil {
-			fmt.Println("Error decoding message:", err.Error())
+			log.Println("Error decoding message:", err.Error())
 			break
 		}
+		log.Println("Received message:", message)
 
 		switch message.Type {
-		case GameJoined:
+		case messages.GameJoined:
 			s.joinGame(player, encoder)
-		case GameLeft:
+		case messages.GameLeft:
 			s.leaveGame(player, encoder)
-		case GameStart:
+		case messages.GameStart:
 			s.startGame(player, encoder)
 		// case RollDice:
 		// 	s.rollDice(player, encoder)
 		// case TurnPlayed:
 		// 	s.playTurn(player, message.Dice, message.Category, encoder)
-		case UpdateGameState:
+		case messages.UpdateGameState:
 			s.updateGameState(player, encoder)
-		case GameOver:
+		case messages.GameOver:
 			s.gameOver(player, encoder)
 		default:
 			fmt.Println("Unknown message type:", message.Type)
