@@ -17,7 +17,7 @@ const (
 
 type Message struct {
 	Type          MessageType
-	Players       []game.Player
+	Players       []*game.Player
 	CurrentPlayer string
 	Dice          []game.Dice
 	Category      game.ScoreCategory

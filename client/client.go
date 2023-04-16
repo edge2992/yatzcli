@@ -54,7 +54,8 @@ func (c *Client) Connect() {
 		switch message.Type {
 		case messages.GameJoined:
 			log.Println("Game joined")
-			log.Println("Players:", message.Players)
+			log.Println("Players:", message.Players[0].Name)
+			log.Println("ScoreCard:", message.Players[0].ScoreCard)
 		default:
 			fmt.Println("Unknown message type:", message.Type)
 		}

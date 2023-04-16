@@ -47,7 +47,7 @@ func (s *Server) Start() {
 
 	log.Println("Listening for clients on port", Port)
 
-	for len(s.encoders) < MaxPlayers {
+	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Println("Error accepting:", err.Error())
@@ -58,11 +58,16 @@ func (s *Server) Start() {
 		encoder := gob.NewEncoder(conn)
 		decoder := gob.NewDecoder(conn)
 
-		s.encoders = append(s.encoders, encoder)
-		player := game.NewPlayer("Player " + strconv.Itoa(len(s.encoders)))
-		s.players = append(s.players, player)
+		if len(s.encoders) < MaxPlayers {
+			s.encoders = append(s.encoders, encoder)
+			player := game.NewPlayer("Player " + strconv.Itoa(len(s.encoders)))
+			s.players = append(s.players, player)
 
-		go s.handleConnection(encoder, decoder, player)
+			go s.handleConnection(encoder, decoder, player)
+		} else {
+			log.Println("Maximum number of players reached")
+			conn.Close()
+		}
 	}
 }
 

@@ -2,10 +2,22 @@ package server
 
 import (
 	"encoding/gob"
+	"fmt"
 
 	"yatzcli/game"
 	"yatzcli/messages"
 )
+
+func (s *Server) broadcastMessage(message *messages.Message) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	for _, encoder := range s.encoders {
+		err := encoder.Encode(message)
+		if err != nil {
+			fmt.Println("Error encoding message:", err.Error())
+		}
+	}
+}
 
 func (s *Server) joinGame(player *game.Player, encoder *gob.Encoder) {
 	s.mutex.Lock()
@@ -14,8 +26,8 @@ func (s *Server) joinGame(player *game.Player, encoder *gob.Encoder) {
 	s.players = append(s.players, player)
 
 	message := messages.Message{
-		Type: messages.GameJoined,
-		// Players: s.players,
+		Type:    messages.GameJoined,
+		Players: s.players,
 	}
 	encoder.Encode(&message)
 }
