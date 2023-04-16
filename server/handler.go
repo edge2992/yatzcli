@@ -32,8 +32,8 @@ func (s *Server) leaveGame(player *game.Player, encoder *gob.Encoder) {
 	}
 
 	message := messages.Message{
-		Type:    messages.GameLeft,
-		Players: s.players,
+		Type: messages.GameLeft,
+		// Players: s.players,
 	}
 	encoder.Encode(&message)
 }
@@ -90,30 +90,30 @@ func (s *Server) startGame(player *game.Player, encoder *gob.Encoder) {
 // 	encoder.Encode(&message)
 // }
 
-func (s *Server) updateGameState(player *game.Player, encoder *gob.Encoder) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+// func (s *Server) updateGameState(player *game.Player, encoder *gob.Encoder) {
+// 	s.mutex.Lock()
+// 	defer s.mutex.Unlock()
 
-	message := messages.Message{
-		Type:          messages.UpdateGameState,
-		Players:       s.players,
-		CurrentPlayer: s.players[s.currentPlayer].Name,
-	}
-	encoder.Encode(&message)
-}
+// 	message := messages.Message{
+// 		Type:          messages.UpdateGameState,
+// 		Players:       s.players,
+// 		CurrentPlayer: s.players[s.currentPlayer].Name,
+// 	}
+// 	encoder.Encode(&message)
+// }
 
-func (s *Server) gameOver(player *game.Player, encoder *gob.Encoder) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+// func (s *Server) gameOver(player *game.Player, encoder *gob.Encoder) {
+// 	s.mutex.Lock()
+// 	defer s.mutex.Unlock()
 
-	if !s.gameStarted {
-		return
-	}
-	s.gameStarted = false
+// 	if !s.gameStarted {
+// 		return
+// 	}
+// 	s.gameStarted = false
 
-	message := messages.Message{
-		Type:    messages.GameOver,
-		Players: s.players,
-	}
-	encoder.Encode(&message)
-}
+// 	message := messages.Message{
+// 		Type:    messages.GameOver,
+// 		Players: s.players,
+// 	}
+// 	encoder.Encode(&message)
+// }

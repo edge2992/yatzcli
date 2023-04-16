@@ -13,6 +13,12 @@ import (
 )
 
 // ---------- Constants and Types ----------
+const (
+	NumberOfDice   = 5
+	MaxRolls       = 3
+	NumberOfRounds = 13
+)
+
 type ScoreCategory string
 
 const (
@@ -31,11 +37,10 @@ const (
 	Chance        ScoreCategory = "Chance"
 )
 
-const (
-	NumberOfDice   = 5
-	MaxRolls       = 3
-	NumberOfRounds = 13
-)
+var AllCategories = []ScoreCategory{
+	Ones, Twos, Threes, Fours, Fives, Sixes,
+	ThreeOfAKind, FourOfAKind, FullHouse, SmallStraight, LargeStraight, Yahtzee, Chance,
+}
 
 type Dice struct {
 	Value int
@@ -43,27 +48,19 @@ type Dice struct {
 }
 
 type ScoreCard struct {
-	Scores map[ScoreCategory]*int
+	Scores map[ScoreCategory]int
+	Filled map[ScoreCategory]bool
 }
 
 // ---------- Initialization Functions ----------
 func NewScoreCard() ScoreCard {
 	scoreCard := ScoreCard{
-		Scores: map[ScoreCategory]*int{
-			Ones:          nil,
-			Twos:          nil,
-			Threes:        nil,
-			Fours:         nil,
-			Fives:         nil,
-			Sixes:         nil,
-			ThreeOfAKind:  nil,
-			FourOfAKind:   nil,
-			FullHouse:     nil,
-			SmallStraight: nil,
-			LargeStraight: nil,
-			Yahtzee:       nil,
-			Chance:        nil,
-		},
+		Scores: make(map[ScoreCategory]int),
+		Filled: make(map[ScoreCategory]bool),
+	}
+	for _, category := range AllCategories {
+		scoreCard.Scores[category] = 0
+		scoreCard.Filled[category] = false
 	}
 	return scoreCard
 }
@@ -82,7 +79,7 @@ func playTurn(player *Player) {
 
 	category := chooseCategory(player, dice)
 	score := calculateScore(dice, category)
-	player.ScoreCard.Scores[category] = &score
+	player.ScoreCard.Scores[category] = score
 }
 
 func rollDice(dice []Dice) {
@@ -126,8 +123,8 @@ func categoryWithScore(dice []Dice, categories []string) []string {
 
 func chooseCategory(player *Player, dice []Dice) ScoreCategory {
 	availableCategories := []string{}
-	for cat, score := range player.ScoreCard.Scores {
-		if score == nil {
+	for cat, filled := range player.ScoreCard.Filled {
+		if filled == false {
 			availableCategories = append(availableCategories, string(cat))
 		}
 	}
@@ -180,7 +177,7 @@ func displayCurrentScoreboard(players []Player) {
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"Player"}
 
-	for _, category := range []ScoreCategory{Ones, Twos, Threes, Fours, Fives, Sixes, ThreeOfAKind, FourOfAKind, FullHouse, SmallStraight, LargeStraight, Yahtzee, Chance} {
+	for _, category := range AllCategories {
 		header = append(header, string(category))
 	}
 	header = append(header, "Total")
@@ -188,10 +185,11 @@ func displayCurrentScoreboard(players []Player) {
 
 	for _, player := range players {
 		row := []string{player.Name}
-		for _, category := range []ScoreCategory{Ones, Twos, Threes, Fours, Fives, Sixes, ThreeOfAKind, FourOfAKind, FullHouse, SmallStraight, LargeStraight, Yahtzee, Chance} {
+		for _, category := range AllCategories {
 			score := player.ScoreCard.Scores[category]
-			if score != nil {
-				row = append(row, fmt.Sprintf("%d", *score))
+			filled := player.ScoreCard.Filled[category]
+			if filled {
+				row = append(row, fmt.Sprintf("%d", score))
 			} else {
 				row = append(row, "-")
 			}

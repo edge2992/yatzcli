@@ -88,10 +88,10 @@ func (s *Server) handleConnection(encoder *gob.Encoder, decoder *gob.Decoder, pl
 		// 	s.rollDice(player, encoder)
 		// case TurnPlayed:
 		// 	s.playTurn(player, message.Dice, message.Category, encoder)
-		case messages.UpdateGameState:
-			s.updateGameState(player, encoder)
-		case messages.GameOver:
-			s.gameOver(player, encoder)
+		// case messages.UpdateGameState:
+		// 	s.updateGameState(player, encoder)
+		// case messages.GameOver:
+		// 	s.gameOver(player, encoder)
 		default:
 			fmt.Println("Unknown message type:", message.Type)
 		}

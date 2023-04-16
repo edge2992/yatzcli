@@ -114,9 +114,7 @@ func countDiceValues(dice []Dice) []int {
 func calculateTotalScore(scoreCard ScoreCard) int {
 	total := 0
 	for _, score := range scoreCard.Scores {
-		if score != nil {
-			total += *score
-		}
+		total += score
 	}
 	return total
 }
