@@ -9,6 +9,9 @@ const (
 	GameLeft
 	GameStart
 	GameStarted
+	PlayerReady
+	PlayerJoined
+	PlayerLeft
 	TurnPlayed
 	RollDice
 	UpdateGameState
@@ -18,6 +21,7 @@ const (
 type Message struct {
 	Type          MessageType
 	Players       []*game.Player
+	Player        *game.Player
 	CurrentPlayer string
 	Dice          []game.Dice
 	Category      game.ScoreCategory

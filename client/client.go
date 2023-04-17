@@ -49,15 +49,27 @@ func (c *Client) Connect() {
 			fmt.Println("Error decoding message:", err.Error())
 			break
 		}
-		log.Println("Recieved message:", message)
 
 		switch message.Type {
 		case messages.GameJoined:
-			log.Println("Game joined")
-			log.Println("Players:", message.Players[0].Name)
-			log.Println("ScoreCard:", message.Players[0].ScoreCard)
+			log.Println("Game joined by: ", message.Player.Name)
+			c.Player = message.Player
+			c.setReady(encoder)
+		case messages.PlayerJoined:
+			log.Println("Player joined: ", message.Player.Name)
+		case messages.PlayerLeft:
+			log.Println("Player left: ", message.Player.Name)
+		case messages.GameStarted:
+			log.Println("Game started")
 		default:
 			fmt.Println("Unknown message type:", message.Type)
 		}
 	}
+}
+
+func (c *Client) setReady(encoder *gob.Encoder) {
+	readyMessage := messages.Message{
+		Type: messages.PlayerReady,
+	}
+	encoder.Encode(&readyMessage)
 }

@@ -23,6 +23,7 @@ type Server struct {
 	currentPlayer int
 	mutex         sync.Mutex
 	encoders      []*gob.Encoder
+	readyPlayers  int
 }
 
 // TODO who am i for client
@@ -80,15 +81,14 @@ func (s *Server) handleConnection(encoder *gob.Encoder, decoder *gob.Decoder, pl
 			log.Println("Error decoding message:", err.Error())
 			break
 		}
-		log.Println("Received message:", message)
 
 		switch message.Type {
 		case messages.GameJoined:
 			s.joinGame(player, encoder)
+		case messages.PlayerReady:
+			s.playerReady(player, encoder)
 		case messages.GameLeft:
 			s.leaveGame(player, encoder)
-		case messages.GameStart:
-			s.startGame(player, encoder)
 		// case RollDice:
 		// 	s.rollDice(player, encoder)
 		// case TurnPlayed:

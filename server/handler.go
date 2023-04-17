@@ -3,14 +3,15 @@ package server
 import (
 	"encoding/gob"
 	"fmt"
+	"log"
 
 	"yatzcli/game"
 	"yatzcli/messages"
 )
 
 func (s *Server) broadcastMessage(message *messages.Message) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	// s.mutex.Lock()
+	// defer s.mutex.Unlock()
 	for _, encoder := range s.encoders {
 		err := encoder.Encode(message)
 		if err != nil {
@@ -26,10 +27,51 @@ func (s *Server) joinGame(player *game.Player, encoder *gob.Encoder) {
 	s.players = append(s.players, player)
 
 	message := messages.Message{
-		Type:    messages.GameJoined,
-		Players: s.players,
+		Type:   messages.GameJoined,
+		Player: player,
 	}
-	encoder.Encode(&message)
+	err := encoder.Encode(&message)
+	if err != nil {
+		fmt.Println("Error encoding message:", err.Error())
+	}
+
+	s.playerjoined(player, encoder)
+}
+
+func (s *Server) playerjoined(player *game.Player, encoder *gob.Encoder) {
+	message := messages.Message{
+		Type:   messages.PlayerJoined,
+		Player: player,
+	}
+	s.broadcastMessage(&message)
+
+}
+
+func (s *Server) playerReady(player *game.Player, encoder *gob.Encoder) {
+	s.mutex.Lock()
+	s.readyPlayers++
+	s.mutex.Unlock()
+	log.Println("Player ready:", player.Name)
+
+	if s.readyPlayers >= 2 {
+		s.startGame()
+	}
+}
+
+func (s *Server) startGame() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if s.gameStarted {
+		return
+	}
+	s.gameStarted = true
+	s.currentPlayer = 0
+
+	message := messages.Message{
+		Type: messages.GameStarted,
+	}
+	s.broadcastMessage(&message)
 }
 
 func (s *Server) leaveGame(player *game.Player, encoder *gob.Encoder) {
@@ -44,29 +86,13 @@ func (s *Server) leaveGame(player *game.Player, encoder *gob.Encoder) {
 	}
 
 	message := messages.Message{
-		Type: messages.GameLeft,
-		// Players: s.players,
+		Type:   messages.GameLeft,
+		Player: player,
 	}
-	encoder.Encode(&message)
-}
-
-func (s *Server) startGame(player *game.Player, encoder *gob.Encoder) {
-	// You can send a message to all clients using the encoder.Encode() method
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	if s.gameStarted {
-		return
+	err := encoder.Encode(&message)
+	if err != nil {
+		log.Println("Error encoding message:", err.Error())
 	}
-
-	s.gameStarted = true
-	s.currentPlayer = 0
-
-	message := messages.Message{
-		Type:          messages.GameStarted,
-		CurrentPlayer: s.players[s.currentPlayer].Name,
-	}
-	encoder.Encode(&message)
 }
 
 // func (s *Server) playTurn(player *game.Player, dice []game.Dice, category game.ScoreCategory, encoder *gob.Encoder) {
