@@ -173,7 +173,6 @@ func displayFinalScores(players []Player) {
 
 func DisplayCurrentScoreboard(players []Player) {
 	fmt.Println("\nCurrent Scoreboard:")
-	fmt.Println("The number of players is", len(players))
 
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"Player"}

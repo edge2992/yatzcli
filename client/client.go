@@ -113,16 +113,6 @@ func (c *Client) handleDiceRolled(message *messages.Message, encoder *gob.Encode
 	}
 }
 
-func (c *Client) chooseCategory(player *game.Player, dice []game.Dice, encoder *gob.Encoder) {
-	category := game.ChooseCategory(player, dice)
-	message := messages.Message{
-		Type:     messages.ChooseCategory,
-		Category: category,
-	}
-	encoder.Encode(&message)
-	c.turnFlag = false
-}
-
 func (c *Client) reRollDice(dice []game.Dice, encoder *gob.Encoder) {
 	selectedIndices := game.GetPlayerHoldInput(dice)
 	game.HoldDice(dice, selectedIndices)
@@ -133,51 +123,12 @@ func (c *Client) reRollDice(dice []game.Dice, encoder *gob.Encoder) {
 	encoder.Encode(&message)
 }
 
-func (c *Client) handleDice(decoder *gob.Decoder) []game.Dice {
-	message := &messages.Message{}
-	err := decoder.Decode(message)
-	if err != nil {
-		fmt.Println("Error decoding message:", err.Error())
+func (c *Client) chooseCategory(player *game.Player, dice []game.Dice, encoder *gob.Encoder) {
+	category := game.ChooseCategory(player, dice)
+	message := messages.Message{
+		Type:     messages.ChooseCategory,
+		Category: category,
 	}
-	if message.Type != messages.DiceRolled {
-		fmt.Println("Expected dice rolled message, got:", message.Type)
-	}
-	return message.Dice
-}
-
-func (c *Client) playTurn(encoder *gob.Encoder, decoder *gob.Decoder) {
-	log.Println("Your turn")
-	// rollMessage := messages.Message{
-	// 	Type: messages.RollDice,
-	// }
-	// encoder.Encode(&rollMessage)
-
-	// dice := c.handleDice(decoder)
-
-	// remainingRerolls := 2
-	// for remainingRerolls > 0 {
-	// 	selectedIndices := game.GetPlayerHoldInput(dice)
-
-	// 	rerollMessage := messages.Message{
-	// 		Type: messages.RerollDice,
-
-	// 	}
-
-	// // 	rerollMessage := messages.Message{
-	// // 		Type: messages.RerollDice,
-	// // 		Dice: diceToReroll,
-	// // 	}
-	// // 	encoder.Encode(&rerollMessage)
-
-	// // 	remainingRerolls--
-	// // }
-	// var categoryInput int
-	// fmt.Print("Enter the category number (1-13) you want to score: ")
-	// fmt.Scanf("%d", &categoryInput)
-
-	// chooseCategoryMessage := messages.Message{
-	// 	Type:     messages.ChooseCategory,
-	// 	Category: game.ScoreCategory(categoryInput - 1),
-	// }
-	// encoder.Encode(&chooseCategoryMessage)
+	encoder.Encode(&message)
+	c.turnFlag = false
 }

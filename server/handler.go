@@ -35,10 +35,10 @@ func (s *Server) joinGame(player *game.Player, encoder *gob.Encoder) {
 		fmt.Println("Error encoding message:", err.Error())
 	}
 
-	s.playerjoined(player, encoder)
+	s.playerjoined(player)
 }
 
-func (s *Server) playerjoined(player *game.Player, encoder *gob.Encoder) {
+func (s *Server) playerjoined(player *game.Player) {
 	message := messages.Message{
 		Type:   messages.PlayerJoined,
 		Player: player,
@@ -51,8 +51,9 @@ func (s *Server) playerReady(player *game.Player, encoder *gob.Encoder) {
 	s.mutex.Lock()
 	s.readyPlayers++
 	s.mutex.Unlock()
-	log.Println("Player ready:", player.Name)
 
+	// rough implementation of starting the game
+	// when two players are ready
 	if s.readyPlayers >= 2 {
 		s.startGame()
 	}
@@ -98,8 +99,7 @@ func (s *Server) leaveGame(player *game.Player, encoder *gob.Encoder) {
 }
 
 func (s *Server) startTurn(player *game.Player, encoder *gob.Encoder) {
-	log.Println("The number of players is:", len(s.players))
-	s.updateScoreCard(player, encoder)
+	s.updateScoreCard()
 	if s.players[s.currentPlayer] != player {
 		return
 	}
@@ -137,6 +137,9 @@ func (s *Server) rerollDice(player *game.Player, dice []game.Dice, encoder *gob.
 		// TODO: Send error message
 		return
 	}
+	// rough implementation of rerolling dice
+	// Don't trust the dice numbers returned from the client
+	// trust server's dice numbers
 	selectedIndices := make([]int, 0)
 	for i, d := range dice {
 		if d.Held {
@@ -161,44 +164,10 @@ func (s *Server) chooseCategory(player *game.Player, category game.ScoreCategory
 	s.startTurn(s.players[s.currentPlayer], s.encoders[s.currentPlayer])
 }
 
-// func (s *Server) playTurn(player *game.Player, dice []game.Dice, category game.ScoreCategory, encoder *gob.Encoder) {
-// 	// Update the game state and inform other clients about the turn
-// 	s.mutex.Lock()
-// 	defer s.mutex.Unlock()
-
-// 	if !s.gameStarted || s.players[s.currentPlayer].Name != player.Name {
-// 		return
-// 	}
-
-// 	dice := make([]game.Dice, NumberOfDice)
-// 	game.rollDice(dice)
-
-// 	message := Message{
-// 		Type:  RollDice,
-// 		Dice:  dice,
-// 		Rolls: 1,
-// 	}
-// 	encoder.Encode(&message)
-// }
-
-// 	score := game.calculateScore(dice, category)
-
-// 	s.players[s.currentPlayer].ScoreCard.Scores[category] = &score
-// 	s.currentPlayer = (s.currentPlayer + 1) % len(s.players)
-
-// 	message := Message{
-// 		Type:          TurnPlayed,
-// 		Players:       s.players,
-// 		currentPlayer: s.players[s.currentPlayer].Name,
-// 	}
-// 	encoder.Encode(&message)
-// }
-
-func (s *Server) updateScoreCard(player *game.Player, encoder *gob.Encoder) {
+func (s *Server) updateScoreCard() {
 	message := messages.Message{
-		Type:          messages.UpdateScorecard,
-		Players:       s.players,
-		CurrentPlayer: s.players[s.currentPlayer].Name,
+		Type:    messages.UpdateScorecard,
+		Players: s.players,
 	}
 	s.broadcastMessage(&message)
 }
