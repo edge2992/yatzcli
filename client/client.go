@@ -62,16 +62,15 @@ func (c *Client) Connect() {
 			log.Println("Player left: ", message.Player.Name)
 		case messages.GameStarted:
 			log.Println("Game started")
+		case messages.UpdateScorecard:
+			c.handleUpdateScorecard(message)
 		case messages.TurnStarted:
 			c.handleTurnStarted(message, encoder)
 		case messages.DiceRolled:
 			c.handleDiceRolled(message, encoder)
-		// case messages.RerollDice:
-		// 	c.handleRerollDice(message)
-		// case messages.ChooseCategory:
-		// 	c.handleChooseCategory(message)
-		case messages.UpdateScorecard:
-			c.handleUpdateScorecard(message)
+		case messages.GameOver:
+			log.Println("Game over")
+			// TODO - display winner
 		default:
 			fmt.Println("Unknown message type:", message.Type)
 		}

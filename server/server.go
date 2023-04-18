@@ -20,6 +20,7 @@ const (
 type Server struct {
 	players       []*game.Player
 	gameStarted   bool
+	gameTurnNum   int
 	currentPlayer int
 	mutex         sync.Mutex
 	encoders      []*gob.Encoder
@@ -34,6 +35,7 @@ func NewServer() *Server {
 	return &Server{
 		players:       make([]*game.Player, 0),
 		gameStarted:   false,
+		gameTurnNum:   0,
 		currentPlayer: 0,
 		mutex:         sync.Mutex{},
 		encoders:      make([]*gob.Encoder, 0),

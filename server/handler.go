@@ -100,9 +100,14 @@ func (s *Server) leaveGame(player *game.Player, encoder *gob.Encoder) {
 
 func (s *Server) startTurn(player *game.Player, encoder *gob.Encoder) {
 	s.updateScoreCard()
+	if s.gameTurnNum == game.NumberOfRounds*len(s.players) {
+		s.gameOver()
+		return
+	}
 	if s.players[s.currentPlayer] != player {
 		return
 	}
+	s.gameTurnNum += 1
 
 	for i := 0; i < game.NumberOfDice; i++ {
 		s.dices[i].Held = false
@@ -172,18 +177,15 @@ func (s *Server) updateScoreCard() {
 	s.broadcastMessage(&message)
 }
 
-// func (s *Server) gameOver(player *game.Player, encoder *gob.Encoder) {
-// 	s.mutex.Lock()
-// 	defer s.mutex.Unlock()
+func (s *Server) gameOver() {
+	if !s.gameStarted {
+		return
+	}
+	s.gameStarted = false
 
-// 	if !s.gameStarted {
-// 		return
-// 	}
-// 	s.gameStarted = false
-
-// 	message := messages.Message{
-// 		Type:    messages.GameOver,
-// 		Players: s.players,
-// 	}
-// 	encoder.Encode(&message)
-// }
+	message := messages.Message{
+		Type:    messages.GameOver,
+		Players: s.players,
+	}
+	s.broadcastMessage(&message)
+}
