@@ -24,7 +24,7 @@ func (s *Server) joinGame(player *game.Player, encoder *gob.Encoder) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.players = append(s.players, player)
+	// s.players = append(s.players, player)
 
 	message := messages.Message{
 		Type:   messages.GameJoined,
@@ -72,6 +72,8 @@ func (s *Server) startGame() {
 		Type: messages.GameStarted,
 	}
 	s.broadcastMessage(&message)
+
+	s.startTurn(s.players[s.currentPlayer], s.encoders[s.currentPlayer])
 }
 
 func (s *Server) leaveGame(player *game.Player, encoder *gob.Encoder) {
@@ -93,6 +95,70 @@ func (s *Server) leaveGame(player *game.Player, encoder *gob.Encoder) {
 	if err != nil {
 		log.Println("Error encoding message:", err.Error())
 	}
+}
+
+func (s *Server) startTurn(player *game.Player, encoder *gob.Encoder) {
+	log.Println("The number of players is:", len(s.players))
+	s.updateScoreCard(player, encoder)
+	if s.players[s.currentPlayer] != player {
+		return
+	}
+
+	for i := 0; i < game.NumberOfDice; i++ {
+		s.dices[i].Held = false
+	}
+	s.diceRolls = 0
+
+	message := messages.Message{
+		Type:   messages.TurnStarted,
+		Player: player,
+	}
+	err := encoder.Encode(&message)
+	if err != nil {
+		log.Println("Error encoding message:", err.Error())
+	}
+}
+
+func (s *Server) rollDice(player *game.Player, encoder *gob.Encoder) {
+	s.diceRolls += 1
+	game.RollDice(s.dices)
+
+	message := messages.Message{
+		Type:      messages.DiceRolled,
+		Player:    player,
+		Dice:      s.dices,
+		DiceRolls: s.diceRolls,
+	}
+	s.broadcastMessage(&message)
+}
+
+func (s *Server) rerollDice(player *game.Player, dice []game.Dice, encoder *gob.Encoder) {
+	if s.diceRolls >= game.NumberOfDice {
+		// TODO: Send error message
+		return
+	}
+	selectedIndices := make([]int, 0)
+	for i, d := range dice {
+		if d.Held {
+			selectedIndices = append(selectedIndices, i)
+		}
+	}
+
+	game.HoldDice(s.dices, selectedIndices)
+	s.rollDice(player, encoder)
+}
+
+func (s *Server) chooseCategory(player *game.Player, category game.ScoreCategory, encoder *gob.Encoder) {
+	if s.players[s.currentPlayer] != player {
+		return
+	}
+
+	score := game.CalculateScore(s.dices, category)
+	player.ScoreCard.Scores[category] = score
+	player.ScoreCard.Filled[category] = true
+
+	s.currentPlayer = (s.currentPlayer + 1) % len(s.players)
+	s.startTurn(s.players[s.currentPlayer], s.encoders[s.currentPlayer])
 }
 
 // func (s *Server) playTurn(player *game.Player, dice []game.Dice, category game.ScoreCategory, encoder *gob.Encoder) {
@@ -128,17 +194,14 @@ func (s *Server) leaveGame(player *game.Player, encoder *gob.Encoder) {
 // 	encoder.Encode(&message)
 // }
 
-// func (s *Server) updateGameState(player *game.Player, encoder *gob.Encoder) {
-// 	s.mutex.Lock()
-// 	defer s.mutex.Unlock()
-
-// 	message := messages.Message{
-// 		Type:          messages.UpdateGameState,
-// 		Players:       s.players,
-// 		CurrentPlayer: s.players[s.currentPlayer].Name,
-// 	}
-// 	encoder.Encode(&message)
-// }
+func (s *Server) updateScoreCard(player *game.Player, encoder *gob.Encoder) {
+	message := messages.Message{
+		Type:          messages.UpdateScorecard,
+		Players:       s.players,
+		CurrentPlayer: s.players[s.currentPlayer].Name,
+	}
+	s.broadcastMessage(&message)
+}
 
 // func (s *Server) gameOver(player *game.Player, encoder *gob.Encoder) {
 // 	s.mutex.Lock()

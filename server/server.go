@@ -24,6 +24,8 @@ type Server struct {
 	mutex         sync.Mutex
 	encoders      []*gob.Encoder
 	readyPlayers  int
+	dices         []game.Dice
+	diceRolls     int
 }
 
 // TODO who am i for client
@@ -35,6 +37,7 @@ func NewServer() *Server {
 		currentPlayer: 0,
 		mutex:         sync.Mutex{},
 		encoders:      make([]*gob.Encoder, 0),
+		dices:         make([]game.Dice, game.NumberOfDice),
 	}
 }
 
@@ -89,12 +92,16 @@ func (s *Server) handleConnection(encoder *gob.Encoder, decoder *gob.Decoder, pl
 			s.playerReady(player, encoder)
 		case messages.GameLeft:
 			s.leaveGame(player, encoder)
-		// case RollDice:
-		// 	s.rollDice(player, encoder)
-		// case TurnPlayed:
-		// 	s.playTurn(player, message.Dice, message.Category, encoder)
-		// case messages.UpdateGameState:
-		// 	s.updateGameState(player, encoder)
+		case messages.TurnStarted:
+			s.startTurn(player, encoder)
+		case messages.DiceRolled:
+			s.rollDice(player, encoder)
+		case messages.RerollDice:
+			s.rerollDice(player, message.Dice, encoder)
+		case messages.ChooseCategory:
+			s.chooseCategory(player, message.Category, encoder)
+		// case messages.UpdateScorecard:
+		// 	s.updateScorecard(player, encoder)
 		// case messages.GameOver:
 		// 	s.gameOver(player, encoder)
 		default:

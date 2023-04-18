@@ -66,23 +66,23 @@ func NewScoreCard() ScoreCard {
 }
 
 // ---------- Gameplay Functions ----------
-func playTurn(player *Player) {
+func PlayTurn(player *Player) {
 	dice := make([]Dice, NumberOfDice)
-	rollDice(dice)
+	RollDice(dice)
 	for rolls := 1; rolls < MaxRolls; rolls++ {
-		displayDice(dice)
-		selectedIndices := getPlayerHoldInput(dice)
-		holdDice(dice, selectedIndices)
-		rollDice(dice)
+		DisplayDice(dice)
+		selectedIndices := GetPlayerHoldInput(dice)
+		HoldDice(dice, selectedIndices)
+		RollDice(dice)
 	}
-	displayDice(dice)
+	DisplayDice(dice)
 
-	category := chooseCategory(player, dice)
-	score := calculateScore(dice, category)
+	category := ChooseCategory(player, dice)
+	score := CalculateScore(dice, category)
 	player.ScoreCard.Scores[category] = score
 }
 
-func rollDice(dice []Dice) {
+func RollDice(dice []Dice) {
 	for i := range dice {
 		if !dice[i].Held {
 			dice[i].Value = rand.Intn(6) + 1
@@ -90,7 +90,7 @@ func rollDice(dice []Dice) {
 	}
 }
 
-func holdDice(dice []Dice, selectedIndices []int) {
+func HoldDice(dice []Dice, selectedIndices []int) {
 	for _, index := range selectedIndices {
 		if index >= 0 && index < len(dice) {
 			dice[index].Held = true
@@ -98,7 +98,7 @@ func holdDice(dice []Dice, selectedIndices []int) {
 	}
 }
 
-func displayDice(dice []Dice) {
+func DisplayDice(dice []Dice) {
 	fmt.Print("Dice: ")
 	for i := range dice {
 		if dice[i].Held {
@@ -115,13 +115,13 @@ func displayDice(dice []Dice) {
 func categoryWithScore(dice []Dice, categories []string) []string {
 	options := make([]string, len(categories))
 	for i, cat := range categories {
-		score := calculateScore(dice, ScoreCategory(cat))
+		score := CalculateScore(dice, ScoreCategory(cat))
 		options[i] = cat + "\t(" + strconv.Itoa(score) + ")"
 	}
 	return options
 }
 
-func chooseCategory(player *Player, dice []Dice) ScoreCategory {
+func ChooseCategory(player *Player, dice []Dice) ScoreCategory {
 	availableCategories := []string{}
 	for cat, filled := range player.ScoreCard.Filled {
 		if filled == false {
@@ -138,7 +138,7 @@ func chooseCategory(player *Player, dice []Dice) ScoreCategory {
 	return ScoreCategory(strings.Split(selectedCategory, "\t")[0])
 }
 
-func getPlayerHoldInput(dice []Dice) []int {
+func GetPlayerHoldInput(dice []Dice) []int {
 	var selectedIndices []int
 
 	diceOptions := make([]string, len(dice))
@@ -171,8 +171,9 @@ func displayFinalScores(players []Player) {
 	}
 }
 
-func displayCurrentScoreboard(players []Player) {
+func DisplayCurrentScoreboard(players []Player) {
 	fmt.Println("\nCurrent Scoreboard:")
+	fmt.Println("The number of players is", len(players))
 
 	table := tablewriter.NewWriter(os.Stdout)
 	header := []string{"Player"}

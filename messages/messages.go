@@ -12,7 +12,12 @@ const (
 	PlayerReady
 	PlayerJoined
 	PlayerLeft
+	DiceRolled
+	RerollDice
+	TurnStarted
 	TurnPlayed
+	ChooseCategory
+	UpdateScorecard
 	RollDice
 	UpdateGameState
 	GameOver
@@ -24,5 +29,6 @@ type Message struct {
 	Player        *game.Player
 	CurrentPlayer string
 	Dice          []game.Dice
+	DiceRolls     int
 	Category      game.ScoreCategory
 }

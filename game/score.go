@@ -92,7 +92,7 @@ func calculateChance(diceCounts []int) int {
 	return total
 }
 
-func calculateScore(dice []Dice, category ScoreCategory) int {
+func CalculateScore(dice []Dice, category ScoreCategory) int {
 	diceCounts := countDiceValues(dice)
 	calculator, ok := scoreCalculators[category]
 

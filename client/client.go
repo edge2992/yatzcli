@@ -17,10 +17,11 @@ const (
 type Client struct {
 	connection net.Conn
 	Player     *game.Player
+	turnFlag   bool
 }
 
 func NewClient() *Client {
-	return &Client{}
+	return &Client{turnFlag: false}
 }
 
 func (c *Client) Connect() {
@@ -61,6 +62,16 @@ func (c *Client) Connect() {
 			log.Println("Player left: ", message.Player.Name)
 		case messages.GameStarted:
 			log.Println("Game started")
+		case messages.TurnStarted:
+			c.handleTurnStarted(message, encoder)
+		case messages.DiceRolled:
+			c.handleDiceRolled(message, encoder)
+		// case messages.RerollDice:
+		// 	c.handleRerollDice(message)
+		// case messages.ChooseCategory:
+		// 	c.handleChooseCategory(message)
+		case messages.UpdateScorecard:
+			c.handleUpdateScorecard(message)
 		default:
 			fmt.Println("Unknown message type:", message.Type)
 		}
@@ -72,4 +83,101 @@ func (c *Client) setReady(encoder *gob.Encoder) {
 		Type: messages.PlayerReady,
 	}
 	encoder.Encode(&readyMessage)
+}
+
+func (c *Client) handleUpdateScorecard(message *messages.Message) {
+	players := make([]game.Player, 0)
+	for _, player := range message.Players {
+		players = append(players, *player)
+	}
+	game.DisplayCurrentScoreboard(players)
+}
+
+func (c *Client) handleTurnStarted(message *messages.Message, encoder *gob.Encoder) {
+	log.Println("It's your turn!")
+	c.turnFlag = true
+	hmessage := messages.Message{
+		Type: messages.DiceRolled,
+	}
+	encoder.Encode(&hmessage)
+}
+
+func (c *Client) handleDiceRolled(message *messages.Message, encoder *gob.Encoder) {
+	game.DisplayDice(message.Dice)
+	if c.turnFlag {
+		if message.DiceRolls < game.MaxRolls {
+			c.reRollDice(message.Dice, encoder)
+		} else {
+			c.chooseCategory(message.Player, message.Dice, encoder)
+		}
+	}
+}
+
+func (c *Client) chooseCategory(player *game.Player, dice []game.Dice, encoder *gob.Encoder) {
+	category := game.ChooseCategory(player, dice)
+	message := messages.Message{
+		Type:     messages.ChooseCategory,
+		Category: category,
+	}
+	encoder.Encode(&message)
+	c.turnFlag = false
+}
+
+func (c *Client) reRollDice(dice []game.Dice, encoder *gob.Encoder) {
+	selectedIndices := game.GetPlayerHoldInput(dice)
+	game.HoldDice(dice, selectedIndices)
+	message := messages.Message{
+		Type: messages.RerollDice,
+		Dice: dice,
+	}
+	encoder.Encode(&message)
+}
+
+func (c *Client) handleDice(decoder *gob.Decoder) []game.Dice {
+	message := &messages.Message{}
+	err := decoder.Decode(message)
+	if err != nil {
+		fmt.Println("Error decoding message:", err.Error())
+	}
+	if message.Type != messages.DiceRolled {
+		fmt.Println("Expected dice rolled message, got:", message.Type)
+	}
+	return message.Dice
+}
+
+func (c *Client) playTurn(encoder *gob.Encoder, decoder *gob.Decoder) {
+	log.Println("Your turn")
+	// rollMessage := messages.Message{
+	// 	Type: messages.RollDice,
+	// }
+	// encoder.Encode(&rollMessage)
+
+	// dice := c.handleDice(decoder)
+
+	// remainingRerolls := 2
+	// for remainingRerolls > 0 {
+	// 	selectedIndices := game.GetPlayerHoldInput(dice)
+
+	// 	rerollMessage := messages.Message{
+	// 		Type: messages.RerollDice,
+
+	// 	}
+
+	// // 	rerollMessage := messages.Message{
+	// // 		Type: messages.RerollDice,
+	// // 		Dice: diceToReroll,
+	// // 	}
+	// // 	encoder.Encode(&rerollMessage)
+
+	// // 	remainingRerolls--
+	// // }
+	// var categoryInput int
+	// fmt.Print("Enter the category number (1-13) you want to score: ")
+	// fmt.Scanf("%d", &categoryInput)
+
+	// chooseCategoryMessage := messages.Message{
+	// 	Type:     messages.ChooseCategory,
+	// 	Category: game.ScoreCategory(categoryInput - 1),
+	// }
+	// encoder.Encode(&chooseCategoryMessage)
 }
