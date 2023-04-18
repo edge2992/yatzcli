@@ -1,23 +1,23 @@
-# Yatzee CLI
+# YatzCLI
 
-Yatzee CLI is a turn-based multiplayer command-line game inspired by the classic dice game Yahtzee. Designed with developers in mind, it's the perfect way to kill time while waiting for builds to finish or during those dull training sessions. With a simple interface and quick matches, you can effortlessly engage in some friendly competition with your peers.
+YatzCLI is a turn-based multiplayer command-line game inspired by the classic dice game Yahtzee. Designed with developers in mind, it's the perfect way to kill time while waiting for builds to finish or during those dull training sessions. With a simple interface and quick matches, you can effortlessly engage in some friendly competition with your peers.
 
 ## How it works
 
-Yatzee CLI is built using Go and leverages the standard library's networking capabilities to connect clients to a central server. The game follows a turn-based structure, allowing players to roll dice, reroll, and choose scoring categories while ensuring smooth and seamless gameplay. The server handles all the game logic and state, broadcasting updates to the clients as the game progresses.
+YatzCLI is built using Go and leverages the standard library's networking capabilities to connect clients to a central server. The game follows a turn-based structure, allowing players to roll dice, reroll, and choose scoring categories while ensuring smooth and seamless gameplay. The server handles all the game logic and state, broadcasting updates to the clients as the game progresses.
 
 ## How to run
 
 Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/yatzee-cli.git
+git clone https://github.com/edge2992/yatzcli.git
 ```
 
 Change to the project directory:
 
 ```bash
-cd yatzee-cli
+cd yatzcli
 ```
 
 Build the server and client executables:
