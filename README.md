@@ -1,21 +1,57 @@
-# YatzCLI
+# Yatzee CLI
 
-## Set up the project structure:
+Yatzee CLI is a turn-based multiplayer command-line game inspired by the classic dice game Yahtzee. Designed with developers in mind, it's the perfect way to kill time while waiting for builds to finish or during those dull training sessions. With a simple interface and quick matches, you can effortlessly engage in some friendly competition with your peers.
 
-Create a new directory for your project and initialize it as a Go module. You can do this by running go mod init <module-name> in your project directory.
+## How it works
 
-## Define the data structures:
+Yatzee CLI is built using Go and leverages the standard library's networking capabilities to connect clients to a central server. The game follows a turn-based structure, allowing players to roll dice, reroll, and choose scoring categories while ensuring smooth and seamless gameplay. The server handles all the game logic and state, broadcasting updates to the clients as the game progresses.
 
-In a new file, yahtzee.go, define the data structures for the game, such as Player, Dice, and ScoreCard. You'll also need to define the various scoring categories for Yahtzee, such as ThreeOfAKind, FourOfAKind, FullHouse, etc.
+## How to run
 
-## Implement the game mechanics:
+Clone the repository:
 
-Create functions for rolling the dice, scoring the dice, and determining if a roll can be scored in a particular category. You'll also need to implement game state management, including tracking players' turns and scores.
+```bash
+git clone https://github.com/yourusername/yatzee-cli.git
+```
 
-## Create the CLI:
+Change to the project directory:
 
-In another file, main.go, create a command-line interface to interact with the game. You can use the fmt package to handle input and output. You'll need to prompt the user to roll the dice, hold or re-roll dice, and choose a scoring category. Also, implement a loop for taking turns and managing the game state.
+```bash
+cd yatzee-cli
+```
 
-## Add the automatic matching function:
+Build the server and client executables:
 
-To add an automatic matching function, you can implement a simple AI player that chooses the best scoring category for a given roll, based on some heuristics. Alternatively, you could use a more advanced approach, such as a Monte Carlo tree search or a neural network.
+```bash
+go build -o server server/main.go
+go build -o client client/main.go
+```
+
+Run the server in a separate terminal:
+
+```bash
+./server
+```
+
+Run the client in another terminal (one for each player):
+
+```bash
+./client
+```
+
+Once connected, the game will start automatically when two or more players have joined. Follow the on-screen prompts to play your turn, reroll dice, and choose categories for scoring. Enjoy the game and happy coding!
+
+## Game flow
+
+The game follows a typical turn-based flow:
+
+1. Players connect to the server, joining a game room.
+2. When two or more players are in the room, the game starts automatically.
+3. The server shares the current turn with all participants.
+4. The server shares the rolled dice with all participants.
+5. The server notifies the current player and asks if they want to reroll the dice.
+6. The player can reroll the dice up to two times, with the server sharing the updated dice after each reroll.
+7. The player chooses a scoring category for the rolled dice.
+8. The server updates the scorecard and moves to the next player's turn.
+
+The game continues until all players have completed their turns and filled their scorecards. At the end of the game, the server calculates the final scores and declares the winner.
