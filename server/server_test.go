@@ -43,22 +43,18 @@ func TestJoinGame(t *testing.T) {
 
 func TestPlayerReady(t *testing.T) {
 	// Create a server and two players
-	server := NewServer()
+	server, encoder, _ := setupTestEnvironment()
+
 	player1 := game.NewPlayer("Player 1")
 	player2 := game.NewPlayer("Player 2")
 
 	// Add the players to the server
 	server.players = append(server.players, player1, player2)
-
-	// Mock the encoders
-	var buf1, buf2 bytes.Buffer
-	encoder1 := gob.NewEncoder(&buf1)
-	encoder2 := gob.NewEncoder(&buf2)
-	server.encoders = append(server.encoders, encoder1, encoder2)
+	server.encoders = append(server.encoders, encoder, encoder)
 
 	// Call the playerReady function for both players
-	server.playerReady(player1, encoder1)
-	server.playerReady(player2, encoder2)
+	server.playerReady(player1, encoder)
+	server.playerReady(player2, encoder)
 
 	// Check if the readyPlayers count is correct
 	if server.readyPlayers != 2 {
@@ -77,23 +73,16 @@ func TestPlayerReady(t *testing.T) {
 }
 
 func TestRollDice(t *testing.T) {
-	// Create a server and a player
-	server := NewServer()
+	server, encoder, _ := setupTestEnvironment()
+
 	player := game.NewPlayer("Player 1")
 
-	// Add the player to the server
 	server.players = append(server.players, player)
-
-	// Mock the encoder
-	var buf bytes.Buffer
-	encoder := gob.NewEncoder(&buf)
 	server.encoders = append(server.encoders, encoder)
 
-	// Set the gameStarted flag and currentPlayer
 	server.gameStarted = true
 	server.currentPlayer = 0
 
-	// Call the rollDice function
 	server.rollDice(player, encoder)
 
 	// Check if the dice have been rolled (their values should have changed)
@@ -115,18 +104,10 @@ func TestRollDice(t *testing.T) {
 }
 
 func TestRerollDice(t *testing.T) {
-	// Create a server and a player
-	server := NewServer()
-	player1 := game.NewPlayer("Player 1")
-	player2 := game.NewPlayer("Player 2")
+	server, encoder, _ := setupTestEnvironment()
+	player := game.NewPlayer("Player 1")
 
-	// Add the player to the server
-	server.players = append(server.players, player1)
-	server.players = append(server.players, player2)
-
-	// Mock the encoder
-	var buf bytes.Buffer
-	encoder := gob.NewEncoder(&buf)
+	server.players = append(server.players, player)
 	server.encoders = append(server.encoders, encoder)
 
 	// Set the gameStarted flag and currentPlayer
@@ -135,7 +116,7 @@ func TestRerollDice(t *testing.T) {
 	server.diceRolls = 0
 
 	// Call the rollDice function to set initial dice values
-	server.rollDice(player1, encoder)
+	server.rollDice(player, encoder)
 
 	// Store the initial dice values
 	initialDiceValues := make([]int, len(server.dices))
@@ -150,7 +131,7 @@ func TestRerollDice(t *testing.T) {
 	dice[2].Held = true
 
 	// Call the rerollDice function
-	server.rerollDice(player1, dice, encoder)
+	server.rerollDice(player, dice, encoder)
 
 	// Check if the held dice values remain unchanged, and other dice values have changed
 	for i, d := range server.dices {
@@ -169,21 +150,12 @@ func TestRerollDice(t *testing.T) {
 }
 
 func TestChooseCategory(t *testing.T) {
-	// Create a server and a player
-	server := NewServer()
+	server, encoder, _ := setupTestEnvironment()
 	player1 := game.NewPlayer("Player 1")
 	player2 := game.NewPlayer("Player 2")
 
-	// Add the player to the server
-	server.players = append(server.players, player1)
-	server.players = append(server.players, player2)
-
-	// Mock the encoder
-	var buf bytes.Buffer
-	encoder1 := gob.NewEncoder(&buf)
-	encoder2 := gob.NewEncoder(&buf)
-	server.encoders = append(server.encoders, encoder1)
-	server.encoders = append(server.encoders, encoder2)
+	server.players = append(server.players, player1, player2)
+	server.encoders = append(server.encoders, encoder, encoder)
 
 	// Set the gameStarted flag and currentPlayer
 	server.gameStarted = true
@@ -202,7 +174,7 @@ func TestChooseCategory(t *testing.T) {
 	category := game.FullHouse
 
 	// Call the chooseCategory function
-	server.chooseCategory(player1, category, encoder1)
+	server.chooseCategory(player1, category, encoder)
 
 	// Check if the score for the chosen category is correct
 	expectedScore := 25
