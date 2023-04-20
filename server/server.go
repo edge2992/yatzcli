@@ -67,7 +67,6 @@ func (s *Server) Start() {
 		if len(s.encoders) < MaxPlayers {
 			s.encoders = append(s.encoders, encoder)
 			player := game.NewPlayer("Player " + strconv.Itoa(len(s.encoders)))
-			s.players = append(s.players, player)
 
 			go s.handleConnection(encoder, decoder, player)
 		} else {

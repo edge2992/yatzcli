@@ -24,7 +24,7 @@ func (s *Server) joinGame(player *game.Player, encoder *gob.Encoder) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	// s.players = append(s.players, player)
+	s.players = append(s.players, player)
 
 	message := messages.Message{
 		Type:   messages.GameJoined,
