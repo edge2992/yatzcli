@@ -105,14 +105,14 @@ func (c *Client) handleDiceRolled(message *messages.Message, encoder *gob.Encode
 	game.DisplayDice(message.Dice)
 	if c.turnFlag {
 		if message.DiceRolls < game.MaxRolls {
-			c.reRollDice(message.Dice, encoder)
+			c.ReRollDice(message.Dice, encoder)
 		} else {
-			c.chooseCategory(message.Player, message.Dice, encoder)
+			c.ChooseCategory(message.Player, message.Dice, encoder)
 		}
 	}
 }
 
-func (c *Client) reRollDice(dice []game.Dice, encoder *gob.Encoder) {
+func (c *Client) ReRollDice(dice []game.Dice, encoder *gob.Encoder) {
 	selectedIndices := game.GetPlayerHoldInput(dice)
 	game.HoldDice(dice, selectedIndices)
 	message := messages.Message{
@@ -122,7 +122,7 @@ func (c *Client) reRollDice(dice []game.Dice, encoder *gob.Encoder) {
 	encoder.Encode(&message)
 }
 
-func (c *Client) chooseCategory(player *game.Player, dice []game.Dice, encoder *gob.Encoder) {
+func (c *Client) ChooseCategory(player *game.Player, dice []game.Dice, encoder *gob.Encoder) {
 	category := game.ChooseCategory(player, dice)
 	message := messages.Message{
 		Type:     messages.ChooseCategory,
