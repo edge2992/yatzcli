@@ -155,6 +155,7 @@ func (c *Client) chooseCategory(player *game.Player, dice []game.Dice) {
 	category := c.ioHandler.ChooseCategory(player, dice)
 	message := messages.Message{
 		Type:     messages.ChooseCategory,
+		Player:   player,
 		Category: category,
 	}
 	c.connection.Encode(&message)
