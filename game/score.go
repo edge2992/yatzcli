@@ -111,7 +111,7 @@ func countDiceValues(dice []Dice) []int {
 	return counts
 }
 
-func calculateTotalScore(scoreCard ScoreCard) int {
+func CalculateTotalScore(scoreCard ScoreCard) int {
 	total := 0
 	for _, score := range scoreCard.Scores {
 		total += score
