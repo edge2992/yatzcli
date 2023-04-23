@@ -41,7 +41,7 @@ func (c *ConsoleIOHandler) GetPlayerHoldInput(dice []game.Dice) []int {
 func (c *ConsoleIOHandler) ChooseCategory(player *game.Player, dice []game.Dice) game.ScoreCategory {
 	availableCategories := []string{}
 	for cat, filled := range player.ScoreCard.Filled {
-		if filled == false {
+		if !filled {
 			availableCategories = append(availableCategories, string(cat))
 		}
 	}
