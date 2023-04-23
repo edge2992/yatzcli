@@ -84,7 +84,7 @@ func (c *Client) Run() {
 		case messages.GameJoined:
 			log.Println("Game joined by: ", message.Player.Name)
 			c.Player = message.Player
-			c.SetReady()
+			c.setReady()
 		case messages.PlayerJoined:
 			log.Println("Player joined: ", message.Player.Name)
 		case messages.PlayerLeft:
@@ -92,11 +92,11 @@ func (c *Client) Run() {
 		case messages.GameStarted:
 			log.Println("Game started")
 		case messages.UpdateScorecard:
-			c.HandleUpdateScorecard(message)
+			c.handleUpdateScorecard(message)
 		case messages.TurnStarted:
-			c.HandleTurnStarted(message)
+			c.handleTurnStarted(message)
 		case messages.DiceRolled:
-			c.HandleDiceRolled(message)
+			c.handleDiceRolled(message)
 		case messages.GameOver:
 			log.Println("Game over")
 			// TODO - display winner
@@ -106,14 +106,14 @@ func (c *Client) Run() {
 	}
 }
 
-func (c *Client) SetReady() {
+func (c *Client) setReady() {
 	readyMessage := messages.Message{
 		Type: messages.PlayerReady,
 	}
 	c.connection.Encode(&readyMessage)
 }
 
-func (c *Client) HandleUpdateScorecard(message *messages.Message) {
+func (c *Client) handleUpdateScorecard(message *messages.Message) {
 	players := make([]game.Player, 0)
 	for _, player := range message.Players {
 		players = append(players, *player)
@@ -121,7 +121,7 @@ func (c *Client) HandleUpdateScorecard(message *messages.Message) {
 	c.ioHandler.DisplayCurrentScoreboard(players)
 }
 
-func (c *Client) HandleTurnStarted(message *messages.Message) {
+func (c *Client) handleTurnStarted(message *messages.Message) {
 	log.Println("It's your turn!")
 	c.turnFlag = true
 	hmessage := messages.Message{
@@ -130,18 +130,18 @@ func (c *Client) HandleTurnStarted(message *messages.Message) {
 	c.connection.Encode(&hmessage)
 }
 
-func (c *Client) HandleDiceRolled(message *messages.Message) {
+func (c *Client) handleDiceRolled(message *messages.Message) {
 	c.ioHandler.DisplayDice(message.Dice)
 	if c.turnFlag {
 		if message.DiceRolls < game.MaxRolls {
-			c.ReRollDice(message.Dice)
+			c.reRollDice(message.Dice)
 		} else {
-			c.ChooseCategory(message.Player, message.Dice)
+			c.chooseCategory(message.Player, message.Dice)
 		}
 	}
 }
 
-func (c *Client) ReRollDice(dice []game.Dice) {
+func (c *Client) reRollDice(dice []game.Dice) {
 	selectedIndices := c.ioHandler.GetPlayerHoldInput(dice)
 	game.HoldDice(dice, selectedIndices)
 	message := messages.Message{
@@ -151,7 +151,7 @@ func (c *Client) ReRollDice(dice []game.Dice) {
 	c.connection.Encode(&message)
 }
 
-func (c *Client) ChooseCategory(player *game.Player, dice []game.Dice) {
+func (c *Client) chooseCategory(player *game.Player, dice []game.Dice) {
 	category := c.ioHandler.ChooseCategory(player, dice)
 	message := messages.Message{
 		Type:     messages.ChooseCategory,
