@@ -23,11 +23,12 @@ type Connection interface {
 type Client struct {
 	connection Connection
 	Player     *game.Player
+	ioHandler  IOHandler
 	turnFlag   bool
 }
 
-func NewClient(conn Connection) *Client {
-	return &Client{connection: conn, turnFlag: false}
+func NewClient(conn Connection, ioHandler IOHandler) *Client {
+	return &Client{connection: conn, ioHandler: ioHandler, turnFlag: false}
 }
 
 func Connect() (Connection, error) {
@@ -117,7 +118,7 @@ func (c *Client) handleUpdateScorecard(message *messages.Message) {
 	for _, player := range message.Players {
 		players = append(players, *player)
 	}
-	game.DisplayCurrentScoreboard(players)
+	c.ioHandler.DisplayCurrentScoreboard(players)
 }
 
 func (c *Client) handleTurnStarted(message *messages.Message) {
@@ -130,7 +131,7 @@ func (c *Client) handleTurnStarted(message *messages.Message) {
 }
 
 func (c *Client) handleDiceRolled(message *messages.Message) {
-	game.DisplayDice(message.Dice)
+	c.ioHandler.DisplayDice(message.Dice)
 	if c.turnFlag {
 		if message.DiceRolls < game.MaxRolls {
 			c.ReRollDice(message.Dice)
@@ -141,7 +142,7 @@ func (c *Client) handleDiceRolled(message *messages.Message) {
 }
 
 func (c *Client) ReRollDice(dice []game.Dice) {
-	selectedIndices := game.GetPlayerHoldInput(dice)
+	selectedIndices := c.ioHandler.GetPlayerHoldInput(dice)
 	game.HoldDice(dice, selectedIndices)
 	message := messages.Message{
 		Type: messages.RerollDice,
@@ -151,7 +152,7 @@ func (c *Client) ReRollDice(dice []game.Dice) {
 }
 
 func (c *Client) ChooseCategory(player *game.Player, dice []game.Dice) {
-	category := game.ChooseCategory(player, dice)
+	category := c.ioHandler.ChooseCategory(player, dice)
 	message := messages.Message{
 		Type:     messages.ChooseCategory,
 		Category: category,

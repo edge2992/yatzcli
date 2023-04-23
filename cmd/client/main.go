@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+
 	"yatzcli/client"
 )
 
@@ -10,6 +11,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	c := client.NewClient(conn)
+	ioHandler := &client.ConsoleIOHandler{}
+	c := client.NewClient(conn, ioHandler)
 	c.Run()
 }
