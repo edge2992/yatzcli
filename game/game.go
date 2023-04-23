@@ -39,3 +39,8 @@ func CreateGameState(players []Player) map[string]*Player {
 	}
 	return gameState
 }
+
+func CreateDices() []Dice {
+	dices := make([]Dice, NumberOfDice)
+	return dices
+}

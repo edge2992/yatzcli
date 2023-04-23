@@ -1,8 +1,11 @@
 package main
 
-import "yatzcli/server"
+import (
+	"yatzcli/server"
+)
 
 func main() {
-	server := server.NewServer()
+	gc := server.NewGameController()
+	server := server.NewServer(gc)
 	server.Start()
 }
