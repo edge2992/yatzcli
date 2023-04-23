@@ -84,7 +84,7 @@ func (c *Client) Run() {
 		case messages.GameJoined:
 			log.Println("Game joined by: ", message.Player.Name)
 			c.Player = message.Player
-			c.setReady()
+			c.SetReady()
 		case messages.PlayerJoined:
 			log.Println("Player joined: ", message.Player.Name)
 		case messages.PlayerLeft:
@@ -92,11 +92,11 @@ func (c *Client) Run() {
 		case messages.GameStarted:
 			log.Println("Game started")
 		case messages.UpdateScorecard:
-			c.handleUpdateScorecard(message)
+			c.HandleUpdateScorecard(message)
 		case messages.TurnStarted:
-			c.handleTurnStarted(message)
+			c.HandleTurnStarted(message)
 		case messages.DiceRolled:
-			c.handleDiceRolled(message)
+			c.HandleDiceRolled(message)
 		case messages.GameOver:
 			log.Println("Game over")
 			// TODO - display winner
@@ -106,14 +106,14 @@ func (c *Client) Run() {
 	}
 }
 
-func (c *Client) setReady() {
+func (c *Client) SetReady() {
 	readyMessage := messages.Message{
 		Type: messages.PlayerReady,
 	}
 	c.connection.Encode(&readyMessage)
 }
 
-func (c *Client) handleUpdateScorecard(message *messages.Message) {
+func (c *Client) HandleUpdateScorecard(message *messages.Message) {
 	players := make([]game.Player, 0)
 	for _, player := range message.Players {
 		players = append(players, *player)
@@ -121,7 +121,7 @@ func (c *Client) handleUpdateScorecard(message *messages.Message) {
 	c.ioHandler.DisplayCurrentScoreboard(players)
 }
 
-func (c *Client) handleTurnStarted(message *messages.Message) {
+func (c *Client) HandleTurnStarted(message *messages.Message) {
 	log.Println("It's your turn!")
 	c.turnFlag = true
 	hmessage := messages.Message{
@@ -130,7 +130,7 @@ func (c *Client) handleTurnStarted(message *messages.Message) {
 	c.connection.Encode(&hmessage)
 }
 
-func (c *Client) handleDiceRolled(message *messages.Message) {
+func (c *Client) HandleDiceRolled(message *messages.Message) {
 	c.ioHandler.DisplayDice(message.Dice)
 	if c.turnFlag {
 		if message.DiceRolls < game.MaxRolls {

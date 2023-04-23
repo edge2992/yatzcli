@@ -19,7 +19,7 @@ func NewPlayer(name string) *Player {
 	return &player
 }
 
-func createPlayers() []Player {
+func CreatePlayers() []Player {
 	players := make([]Player, 2)
 	for i := 0; i < 2; i++ {
 		var name string
@@ -32,7 +32,7 @@ func createPlayers() []Player {
 	return players
 }
 
-func createGameState(players []Player) map[string]*Player {
+func CreateGameState(players []Player) map[string]*Player {
 	gameState := make(map[string]*Player)
 	for i := range players {
 		gameState[players[i].Name] = &players[i]
