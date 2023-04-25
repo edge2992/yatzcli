@@ -24,6 +24,7 @@ const (
 	GameOver
 	CreateRoom
 	JoinRoom
+	LeaveRoom
 	ListRooms
 	ListRoomsResponse
 	WaitForPlayers
