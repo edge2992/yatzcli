@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/gob"
 	"errors"
 	"sync"
 	"yatzcli/game"
@@ -30,7 +29,7 @@ func (rm *RoomManager) CreateRoom(roomID string) (*Room, error) {
 	return newRoom, nil
 }
 
-func (rm *RoomManager) JoinRoom(roomID string, player *game.Player, encoder *gob.Encoder) (*Room, error) {
+func (rm *RoomManager) JoinRoom(roomID string, player *game.Player) (*Room, error) {
 	rm.mutex.Lock()
 	defer rm.mutex.Unlock()
 
@@ -39,7 +38,7 @@ func (rm *RoomManager) JoinRoom(roomID string, player *game.Player, encoder *gob
 		return nil, errors.New("Room does not exist")
 	}
 
-	if err := room.AddPlayer(player, encoder); err != nil {
+	if err := room.AddPlayer(player); err != nil {
 		return nil, err
 	}
 	return room, nil

@@ -7,6 +7,7 @@ import (
 
 	"yatzcli/game"
 	"yatzcli/messages"
+	"yatzcli/network"
 )
 
 const (
@@ -14,23 +15,23 @@ const (
 )
 
 type Client struct {
-	connection messages.Connection
+	connection network.Connection
 	Player     *game.Player
 	ioHandler  IOHandler
 	turnFlag   bool
 }
 
-func NewClient(conn messages.Connection, ioHandler IOHandler) *Client {
+func NewClient(conn network.Connection, ioHandler IOHandler) *Client {
 	return &Client{connection: conn, ioHandler: ioHandler, turnFlag: false}
 }
 
-func Connect() (messages.Connection, error) {
+func Connect() (network.Connection, error) {
 	conn, err := net.Dial("tcp", serverAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	gobConnection := messages.NewGobConnection(conn)
+	gobConnection := network.NewGobConnection(conn)
 	return gobConnection, nil
 }
 

@@ -2,19 +2,22 @@ package game
 
 import (
 	"fmt"
+	"yatzcli/network"
 
 	"github.com/AlecAivazis/survey/v2"
 )
 
 type Player struct {
-	Name      string
-	ScoreCard ScoreCard
+	Name       string
+	ScoreCard  ScoreCard
+	Connection network.Connection `gob:"-"`
 }
 
-func NewPlayer(name string) *Player {
+func NewPlayer(name string, conn network.Connection) *Player {
 	player := Player{
-		Name:      name,
-		ScoreCard: NewScoreCard(),
+		Name:       name,
+		ScoreCard:  NewScoreCard(),
+		Connection: conn,
 	}
 	return &player
 }
