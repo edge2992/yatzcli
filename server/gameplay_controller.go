@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/gob"
 	"fmt"
 	"log"
 	"yatzcli/game"
@@ -19,8 +18,8 @@ func NewGamePlayController(rm *RoomManager) *GamePlayController {
 }
 
 func (gpc *GamePlayController) BroadcastMessageToRoom(room *Room, message *messages.Message) {
-	for _, encoder := range room.encoders {
-		err := encoder.Encode(message)
+	for _, player := range room.Players {
+		err := player.Connection.Encode(message)
 		if err != nil {
 			fmt.Println("Error encoding message:", err.Error())
 		}
@@ -45,10 +44,10 @@ func (gpc *GamePlayController) StartGame(roomID string) {
 	}
 	gpc.BroadcastMessageToRoom(room, &message)
 
-	gpc.StartTurn(roomID, room.Players[room.currentPlayerId], room.encoders[room.currentPlayerId])
+	gpc.StartTurn(roomID, room.Players[room.currentPlayerId])
 }
 
-func (gpc *GamePlayController) StartTurn(roomID string, player *game.Player, encoder *gob.Encoder) {
+func (gpc *GamePlayController) StartTurn(roomID string, player *game.Player) {
 	room, err := gpc.roomManager.GetRoom(roomID)
 	if err != nil {
 		log.Println("Error getting room:", err.Error())
@@ -73,7 +72,7 @@ func (gpc *GamePlayController) StartTurn(roomID string, player *game.Player, enc
 		Type:   messages.TurnStarted,
 		Player: player,
 	}
-	errEncode := encoder.Encode(&message)
+	errEncode := player.Connection.Encode(&message)
 	if errEncode != nil {
 		log.Println("Error encoding message:", errEncode.Error())
 	}
@@ -97,7 +96,7 @@ func (gpc *GamePlayController) GameOver(roomID string) {
 	gpc.BroadcastMessageToRoom(room, &message)
 }
 
-func (gpc *GamePlayController) RollDice(roomID string, player *game.Player, encoder *gob.Encoder) {
+func (gpc *GamePlayController) RollDice(roomID string, player *game.Player) {
 	room, err := gpc.roomManager.GetRoom(roomID)
 	if err != nil {
 		log.Println("Error getting room:", err.Error())
@@ -115,7 +114,7 @@ func (gpc *GamePlayController) RollDice(roomID string, player *game.Player, enco
 	gpc.BroadcastMessageToRoom(room, &message)
 }
 
-func (gpc *GamePlayController) RerollDice(roomID string, player *game.Player, dice []game.Dice, encoder *gob.Encoder) {
+func (gpc *GamePlayController) RerollDice(roomID string, player *game.Player, dice []game.Dice) {
 	room, err := gpc.roomManager.GetRoom(roomID)
 	if err != nil {
 		log.Println("Error getting room:", err.Error())
@@ -137,10 +136,10 @@ func (gpc *GamePlayController) RerollDice(roomID string, player *game.Player, di
 	}
 
 	game.HoldDice(room.dices, selectedIndices)
-	gpc.RollDice(roomID, player, encoder)
+	gpc.RollDice(roomID, player)
 }
 
-func (gpc *GamePlayController) ChooseScoreCategory(roomID string, player *game.Player, category game.ScoreCategory, encoder *gob.Encoder) {
+func (gpc *GamePlayController) ChooseScoreCategory(roomID string, player *game.Player, category game.ScoreCategory) {
 	room, err := gpc.roomManager.GetRoom(roomID)
 	if err != nil {
 		log.Println("Error getting room:", err.Error())
@@ -155,7 +154,7 @@ func (gpc *GamePlayController) ChooseScoreCategory(roomID string, player *game.P
 	player.ScoreCard.Filled[category] = true
 
 	room.currentPlayerId = (room.currentPlayerId + 1) % len(room.Players)
-	gpc.StartTurn(roomID, room.Players[room.currentPlayerId], room.encoders[room.currentPlayerId])
+	gpc.StartTurn(roomID, room.Players[room.currentPlayerId])
 }
 
 func (gpc *GamePlayController) UpdateScoreCard(roomID string) {
@@ -171,16 +170,16 @@ func (gpc *GamePlayController) UpdateScoreCard(roomID string) {
 	gpc.BroadcastMessageToRoom(room, &message)
 }
 
-func (gpc *GamePlayController) HandleMessage(message *messages.Message, player *game.Player, encoder *gob.Encoder) {
+func (gpc *GamePlayController) HandleMessage(message *messages.Message, player *game.Player) {
 	switch message.Type {
 	case messages.TurnStarted:
-		gpc.StartTurn(message.RoomID, player, encoder)
+		gpc.StartTurn(message.RoomID, player)
 	case messages.DiceRolled:
-		gpc.RollDice(message.RoomID, player, encoder)
+		gpc.RollDice(message.RoomID, player)
 	case messages.RerollDice:
-		gpc.RerollDice(message.RoomID, player, message.Dice, encoder)
+		gpc.RerollDice(message.RoomID, player, message.Dice)
 	case messages.ChooseCategory:
-		gpc.ChooseScoreCategory(message.RoomID, player, message.Category, encoder)
+		gpc.ChooseScoreCategory(message.RoomID, player, message.Category)
 	default:
 		log.Println("Unknown message type:", message.Type)
 	}

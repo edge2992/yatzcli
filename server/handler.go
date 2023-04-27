@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/gob"
 	"log"
 	"yatzcli/game"
 	"yatzcli/messages"
@@ -19,7 +18,7 @@ func NewHandler(controllers []Controller) *Handler {
 	}
 }
 
-func (h *Handler) HandleConnection(encoder *gob.Encoder, decoder *gob.Decoder, player *game.Player) {
+func (h *Handler) HandleConnection(player *game.Player) {
 	defer func() {
 		h.connectedPlayers--
 	}()
@@ -28,13 +27,13 @@ func (h *Handler) HandleConnection(encoder *gob.Encoder, decoder *gob.Decoder, p
 
 	for {
 		message := &messages.Message{}
-		err := decoder.Decode(message)
+		err := player.Connection.Decode(message)
 		if err != nil {
 			log.Println("Error decoding message:", err.Error())
 			return
 		}
 		for _, controller := range h.controllers {
-			controller.HandleMessage(message, player, encoder)
+			controller.HandleMessage(message, player)
 		}
 	}
 }

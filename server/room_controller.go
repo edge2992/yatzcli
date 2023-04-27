@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/gob"
 	"log"
 	"yatzcli/game"
 	"yatzcli/messages"
@@ -19,7 +18,7 @@ func NewRoomController(rm *RoomManager) *RoomController {
 	}
 }
 
-func (rc *RoomController) CreateRoom(player *game.Player, encoder *gob.Encoder) {
+func (rc *RoomController) CreateRoom(player *game.Player) {
 	roomID := uuid.New().String()
 	_, err := rc.roomManager.CreateRoom(roomID)
 	if err != nil {
@@ -27,22 +26,22 @@ func (rc *RoomController) CreateRoom(player *game.Player, encoder *gob.Encoder) 
 		return
 	}
 
-	rc.roomManager.JoinRoom(roomID, player, encoder)
+	rc.roomManager.JoinRoom(roomID, player)
 
 	message := messages.Message{
 		Type:   messages.CreateRoom,
 		Player: player,
 		RoomID: roomID,
 	}
-	encodeError := encoder.Encode(&message)
+	encodeError := player.Connection.Encode(&message)
 	if encodeError != nil {
 		log.Println("Error encoding message:", err.Error())
 	}
 }
 
-func (rc *RoomController) JoinRoom(roomID string, player *game.Player, encoder *gob.Encoder) {
+func (rc *RoomController) JoinRoom(roomID string, player *game.Player) {
 
-	rc.addPlayerToRoom(roomID, player, encoder)
+	rc.addPlayerToRoom(roomID, player)
 
 	//TODO check if room is full, if so start game
 
@@ -57,8 +56,8 @@ func (rc *RoomController) JoinRoom(roomID string, player *game.Player, encoder *
 	// }
 }
 
-func (rc *RoomController) addPlayerToRoom(roomID string, player *game.Player, encoder *gob.Encoder) {
-	room, err := rc.roomManager.JoinRoom(roomID, player, encoder)
+func (rc *RoomController) addPlayerToRoom(roomID string, player *game.Player) {
+	room, err := rc.roomManager.JoinRoom(roomID, player)
 	if err != nil {
 		log.Println("Error joining room:", err.Error())
 		return
@@ -69,22 +68,22 @@ func (rc *RoomController) addPlayerToRoom(roomID string, player *game.Player, en
 		Player: player,
 		RoomID: roomID,
 	}
-	encodeErr := encoder.Encode(&message)
+	encodeErr := player.Connection.Encode(&message)
 	if encodeErr != nil {
 		log.Println("Error encoding message:", err.Error())
 	}
-	rc.notifyPlayerJoinedRoomToOthers(room, player, encoder)
+	rc.notifyPlayerJoinedRoomToOthers(room, player)
 }
 
-func (rc *RoomController) notifyPlayerJoinedRoomToOthers(room *Room, player *game.Player, encoder *gob.Encoder) {
+func (rc *RoomController) notifyPlayerJoinedRoomToOthers(room *Room, player *game.Player) {
 	message := messages.Message{
 		Type:   messages.PlayerJoinedRoom,
 		Player: player,
 		RoomID: room.ID,
 	}
-	for i, p := range room.Players {
+	for _, p := range room.Players {
 		if p != player {
-			err := room.encoders[i].Encode(&message)
+			err := p.Connection.Encode(&message)
 			if err != nil {
 				log.Println("Error encoding message:", err.Error())
 			}
@@ -92,7 +91,7 @@ func (rc *RoomController) notifyPlayerJoinedRoomToOthers(room *Room, player *gam
 	}
 }
 
-func (rc *RoomController) ListRooms(player *game.Player, encoder *gob.Encoder) {
+func (rc *RoomController) ListRooms(player *game.Player) {
 	rooms := rc.roomManager.ListRooms()
 
 	roomList := make([]string, 0, len(rooms))
@@ -105,13 +104,13 @@ func (rc *RoomController) ListRooms(player *game.Player, encoder *gob.Encoder) {
 		Player:   player,
 		RoomList: roomList,
 	}
-	err := encoder.Encode(&message)
+	err := player.Connection.Encode(&message)
 	if err != nil {
 		log.Println("Error encoding message:", err.Error())
 	}
 }
 
-func (rc *RoomController) LeaveRoom(room *Room, player *game.Player, encoder *gob.Encoder) {
+func (rc *RoomController) LeaveRoom(room *Room, player *game.Player) {
 	// for i, p := range room.Players {
 	// 	if p.Name == player.Name {
 	// 		room.Players = append(room.Players[:i], room.Players[i+1:]...)
@@ -129,14 +128,14 @@ func (rc *RoomController) LeaveRoom(room *Room, player *game.Player, encoder *go
 	// }
 }
 
-func (rc *RoomController) HandleMessage(message *messages.Message, player *game.Player, encoder *gob.Encoder) {
+func (rc *RoomController) HandleMessage(message *messages.Message, player *game.Player) {
 	switch message.Type {
 	case messages.CreateRoom:
-		rc.CreateRoom(player, encoder)
+		rc.CreateRoom(player)
 	case messages.JoinRoom:
-		rc.addPlayerToRoom(message.RoomID, player, encoder)
+		rc.addPlayerToRoom(message.RoomID, player)
 	case messages.ListRooms:
-		rc.ListRooms(player, encoder)
+		rc.ListRooms(player)
 		// case messages.LeaveRoom:
 		// 	room := rc.rooms[message.RoomID]
 		// 	rc.LeaveRoom(room, player, encoder)

@@ -1,14 +1,12 @@
 package server
 
 import (
-	"encoding/gob"
 	"yatzcli/game"
 )
 
 type Room struct {
 	ID              string
 	Players         []*game.Player
-	encoders        []*gob.Encoder
 	dices           []game.Dice
 	gameStarted     bool
 	gameTurnNum     int
@@ -18,16 +16,14 @@ type Room struct {
 
 func NewRoom(roomID string) *Room {
 	return &Room{
-		ID:       roomID,
-		Players:  []*game.Player{},
-		encoders: []*gob.Encoder{},
-		dices:    game.CreateDices(),
+		ID:      roomID,
+		Players: []*game.Player{},
+		dices:   game.CreateDices(),
 	}
 }
 
-func (room *Room) AddPlayer(player *game.Player, encoder *gob.Encoder) error {
+func (room *Room) AddPlayer(player *game.Player) error {
 	room.Players = append(room.Players, player)
-	room.encoders = append(room.encoders, encoder)
 	return nil
 }
 
