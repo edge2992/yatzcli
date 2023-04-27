@@ -59,3 +59,14 @@ func (rm *RoomManager) ListRooms() []*Room {
 	}
 	return roomList
 }
+
+func (rm *RoomManager) GetRoom(roomID string) (*Room, error) {
+	rm.mutex.RLock()
+	defer rm.mutex.RUnlock()
+
+	room, exists := rm.rooms[roomID]
+	if !exists {
+		return nil, errors.New("Room does not exist")
+	}
+	return room, nil
+}
