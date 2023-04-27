@@ -1,7 +1,6 @@
 package client
 
 import (
-	"encoding/gob"
 	"fmt"
 	"log"
 	"net"
@@ -14,52 +13,25 @@ const (
 	serverAddress = "localhost:8080"
 )
 
-type Connection interface {
-	Encode(interface{}) error
-	Decode(interface{}) error
-	Close() error
-}
-
 type Client struct {
-	connection Connection
+	connection messages.Connection
 	Player     *game.Player
 	ioHandler  IOHandler
 	turnFlag   bool
 }
 
-func NewClient(conn Connection, ioHandler IOHandler) *Client {
+func NewClient(conn messages.Connection, ioHandler IOHandler) *Client {
 	return &Client{connection: conn, ioHandler: ioHandler, turnFlag: false}
 }
 
-func Connect() (Connection, error) {
+func Connect() (messages.Connection, error) {
 	conn, err := net.Dial("tcp", serverAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	return &gobConnection{
-		encoder: gob.NewEncoder(conn),
-		decoder: gob.NewDecoder(conn),
-		conn:    conn,
-	}, nil
-}
-
-type gobConnection struct {
-	encoder *gob.Encoder
-	decoder *gob.Decoder
-	conn    net.Conn
-}
-
-func (g *gobConnection) Encode(e interface{}) error {
-	return g.encoder.Encode(e)
-}
-
-func (g *gobConnection) Decode(e interface{}) error {
-	return g.decoder.Decode(e)
-}
-
-func (g *gobConnection) Close() error {
-	return g.conn.Close()
+	gobConnection := messages.NewGobConnection(conn)
+	return gobConnection, nil
 }
 
 func (c *Client) Run() {
