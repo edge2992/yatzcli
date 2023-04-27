@@ -18,6 +18,13 @@ func NewRoomController(rm *RoomManager) *RoomController {
 	}
 }
 
+func (rc *RoomController) sendMessage(player *game.Player, message *messages.Message) {
+	err := player.Connection.Encode(message)
+	if err != nil {
+		log.Println("Error encoding message:", err.Error())
+	}
+}
+
 func (rc *RoomController) CreateRoom(player *game.Player) {
 	roomID := uuid.New().String()
 	_, err := rc.roomManager.CreateRoom(roomID)
@@ -33,10 +40,7 @@ func (rc *RoomController) CreateRoom(player *game.Player) {
 		Player: player,
 		RoomID: roomID,
 	}
-	encodeError := player.Connection.Encode(&message)
-	if encodeError != nil {
-		log.Println("Error encoding message:", err.Error())
-	}
+	rc.sendMessage(player, &message)
 }
 
 func (rc *RoomController) JoinRoom(roomID string, player *game.Player) {
@@ -68,10 +72,7 @@ func (rc *RoomController) addPlayerToRoom(roomID string, player *game.Player) {
 		Player: player,
 		RoomID: roomID,
 	}
-	encodeErr := player.Connection.Encode(&message)
-	if encodeErr != nil {
-		log.Println("Error encoding message:", err.Error())
-	}
+	rc.sendMessage(player, &message)
 	rc.notifyPlayerJoinedRoomToOthers(room, player)
 }
 
@@ -83,10 +84,7 @@ func (rc *RoomController) notifyPlayerJoinedRoomToOthers(room *Room, player *gam
 	}
 	for _, p := range room.Players {
 		if p != player {
-			err := p.Connection.Encode(&message)
-			if err != nil {
-				log.Println("Error encoding message:", err.Error())
-			}
+			rc.sendMessage(p, &message)
 		}
 	}
 }
@@ -104,10 +102,7 @@ func (rc *RoomController) ListRooms(player *game.Player) {
 		Player:   player,
 		RoomList: roomList,
 	}
-	err := player.Connection.Encode(&message)
-	if err != nil {
-		log.Println("Error encoding message:", err.Error())
-	}
+	rc.sendMessage(player, &message)
 }
 
 func (rc *RoomController) LeaveRoom(room *Room, player *game.Player) {
