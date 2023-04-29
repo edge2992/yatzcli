@@ -5,7 +5,6 @@ import (
 	"net"
 	"strconv"
 
-	"yatzcli/game"
 	"yatzcli/messages"
 	"yatzcli/network"
 )
@@ -16,7 +15,7 @@ const (
 )
 
 type ConnectionHandler interface {
-	HandleConnection(player *game.Player)
+	HandleConnection(player *Player)
 	NumberOfConnetedPlayers() int
 }
 
@@ -51,7 +50,7 @@ func (s *Server) Start() {
 
 		gobConn := network.NewGobConnection(conn)
 		playerName := "Player " + strconv.Itoa(s.handler.NumberOfConnetedPlayers())
-		player := game.NewPlayer(playerName, gobConn)
+		player := NewPlayer(playerName, gobConn)
 
 		msg := &messages.Message{
 			Type:   messages.ServerJoin,

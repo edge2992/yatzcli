@@ -3,7 +3,6 @@ package server
 import (
 	"errors"
 	"sync"
-	"yatzcli/game"
 )
 
 type RoomManager struct {
@@ -36,7 +35,7 @@ func (rm *RoomManager) DestroyRoom(roomID string) {
 	delete(rm.rooms, roomID)
 }
 
-func (rm *RoomManager) JoinRoom(roomID string, player *game.Player) (*Room, error) {
+func (rm *RoomManager) JoinRoom(roomID string, player *Player) (*Room, error) {
 	rm.mutex.Lock()
 	defer rm.mutex.Unlock()
 
@@ -51,7 +50,7 @@ func (rm *RoomManager) JoinRoom(roomID string, player *game.Player) (*Room, erro
 	return room, nil
 }
 
-func (rm *RoomManager) LeaveRoom(roomID string, player *game.Player) error {
+func (rm *RoomManager) LeaveRoom(roomID string, player *Player) error {
 	room, err := rm.GetRoom(roomID)
 	if err != nil {
 		return err

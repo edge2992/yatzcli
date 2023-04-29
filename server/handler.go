@@ -2,7 +2,6 @@ package server
 
 import (
 	"log"
-	"yatzcli/game"
 	"yatzcli/messages"
 )
 
@@ -18,7 +17,7 @@ func NewHandler(controllers []Controller) *Handler {
 	}
 }
 
-func (h *Handler) HandleConnection(player *game.Player) {
+func (h *Handler) HandleConnection(player *Player) {
 	defer func() {
 		h.connectedPlayers--
 	}()
