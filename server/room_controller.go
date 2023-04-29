@@ -4,7 +4,6 @@ import (
 	"log"
 	"yatzcli/game"
 	"yatzcli/messages"
-	"yatzcli/network"
 
 	"github.com/google/uuid"
 )
@@ -20,8 +19,6 @@ func NewRoomController(rm *RoomManager) *RoomController {
 }
 
 func (rc *RoomController) sendMessage(player *game.Player, message *messages.Message) {
-	log.Println("Sending message:", message)
-	log.Println(player.Connection.(*network.GobConnection).String())
 	err := player.Connection.Encode(message)
 	if err != nil {
 		log.Println("Error encoding message:", err.Error())
@@ -57,13 +54,11 @@ func (rc *RoomController) JoinRoom(roomID string, player *game.Player) {
 	rc.addPlayerToRoom(roomID, player)
 
 	// check if room is full, if so start game
-	println("Room ID:", roomID)
 	room, ok := rc.roomManager.GetRoom(roomID)
 	if ok != nil {
 		log.Println("Error getting room:", ok.Error())
 		return
 	}
-	println("Room:", room)
 
 	if len(room.Players) >= 2 {
 		rc.StartGame(room)
@@ -96,7 +91,6 @@ func (rc *RoomController) addPlayerToRoom(roomID string, player *game.Player) {
 }
 
 func (rc *RoomController) notifyPlayerJoinedRoomToOthers(room *Room, player *game.Player) {
-	log.Println("notifyPlayerJoinedRoomToOthers")
 	message := messages.Message{
 		Type:   messages.JoinRoom,
 		Player: player.PlayerInfo(),

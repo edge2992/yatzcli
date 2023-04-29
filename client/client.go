@@ -32,6 +32,7 @@ func Connect() (network.Connection, error) {
 	}
 
 	gobConnection := network.NewGobConnection(conn)
+
 	return gobConnection, nil
 }
 
@@ -39,7 +40,16 @@ func (c *Client) Run() {
 	defer c.connection.Close()
 
 	log.Println("Connected to server")
-
+	message := &messages.Message{}
+	err := c.connection.Decode(message)
+	if err != nil {
+		fmt.Println("Error decoding message:", err.Error())
+		return
+	}
+	if message.Type != messages.ServerJoin {
+		return
+	}
+	c.Player = message.Player
 	// TODO :: プレイヤーを作成するタイミングをコネクションを取った時点に変更する
 	// 問題: second playerの挙動がセグフォになっている
 
@@ -66,7 +76,7 @@ func (c *Client) Run() {
 		switch message.Type {
 
 		case messages.CreateRoom:
-			c.Player = message.Player
+			// c.Player = message.Player
 			log.Println("Room created: ", message.RoomID)
 			// log.Println("Player created: ", c.Player.Name)
 		case messages.JoinRoom:
@@ -150,7 +160,8 @@ func (c *Client) handleTurnStarted(message *messages.Message) {
 	log.Println("It's your turn!")
 	c.turnFlag = true
 	hmessage := messages.Message{
-		Type: messages.DiceRolled,
+		Type:   messages.DiceRolled,
+		RoomID: message.RoomID,
 	}
 	c.connection.Encode(&hmessage)
 }
@@ -159,27 +170,29 @@ func (c *Client) handleDiceRolled(message *messages.Message) {
 	c.ioHandler.DisplayDice(message.Dice)
 	if c.turnFlag {
 		if message.DiceRolls < game.MaxRolls {
-			c.reRollDice(message.Dice)
+			c.reRollDice(message.Dice, message.RoomID)
 		} else {
-			c.chooseCategory(message.Player, message.Dice)
+			c.chooseCategory(message.Player, message.Dice, message.RoomID)
 		}
 	}
 }
 
-func (c *Client) reRollDice(dice []game.Dice) {
+func (c *Client) reRollDice(dice []game.Dice, roomID string) {
 	selectedIndices := c.ioHandler.GetPlayerHoldInput(dice)
 	game.HoldDice(dice, selectedIndices)
 	message := messages.Message{
-		Type: messages.RerollDice,
-		Dice: dice,
+		Type:   messages.RerollDice,
+		RoomID: roomID,
+		Dice:   dice,
 	}
 	c.connection.Encode(&message)
 }
 
-func (c *Client) chooseCategory(player *game.PlayerInfo, dice []game.Dice) {
+func (c *Client) chooseCategory(player *game.PlayerInfo, dice []game.Dice, roomID string) {
 	category := c.ioHandler.ChooseCategory(player, dice)
 	message := messages.Message{
 		Type:     messages.ChooseCategory,
+		RoomID:   roomID,
 		Player:   player,
 		Category: category,
 	}

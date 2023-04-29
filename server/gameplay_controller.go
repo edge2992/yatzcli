@@ -50,6 +50,7 @@ func (gpc *GamePlayController) StartTurn(roomID string, player *game.Player) {
 
 	message := messages.Message{
 		Type:   messages.TurnStarted,
+		RoomID: roomID,
 		Player: player.PlayerInfo(),
 	}
 	errEncode := player.Connection.Encode(&message)
@@ -76,6 +77,7 @@ func (gpc *GamePlayController) GameOver(roomID string) {
 
 	message := messages.Message{
 		Type:    messages.GameOver,
+		RoomID:  roomID,
 		Players: players,
 	}
 	gpc.BroadcastMessageToRoom(room, &message)
@@ -93,6 +95,7 @@ func (gpc *GamePlayController) RollDice(roomID string, player *game.Player) {
 	message := messages.Message{
 		Type:      messages.DiceRolled,
 		Player:    player.PlayerInfo(),
+		RoomID:    roomID,
 		Dice:      room.dices,
 		DiceRolls: room.diceRolls,
 	}
@@ -156,6 +159,7 @@ func (gpc *GamePlayController) UpdateScoreCard(roomID string) {
 
 	message := messages.Message{
 		Type:    messages.UpdateScorecard,
+		RoomID:  roomID,
 		Players: players,
 	}
 	gpc.BroadcastMessageToRoom(room, &message)
@@ -171,8 +175,5 @@ func (gpc *GamePlayController) HandleMessage(message *messages.Message, player *
 		gpc.RerollDice(message.RoomID, player, message.Dice)
 	case messages.ChooseCategory:
 		gpc.ChooseScoreCategory(message.RoomID, player, message.Category)
-	default:
-		log.Println("Unknown message type:", message.Type)
 	}
-
 }

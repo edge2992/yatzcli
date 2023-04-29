@@ -29,6 +29,7 @@ const (
 	ListRoomsResponse
 	WaitForPlayers
 	RoomFull
+	ServerJoin
 )
 
 type Message struct {
