@@ -25,6 +25,12 @@ func (rc *RoomController) sendMessage(player *game.Player, message *messages.Mes
 	}
 }
 
+func (rc *RoomController) sendMessageToRoom(room *Room, message *messages.Message) {
+	for _, player := range room.Players {
+		rc.sendMessage(player, message)
+	}
+}
+
 func (rc *RoomController) CreateRoom(player *game.Player) {
 	roomID := uuid.New().String()
 	_, err := rc.roomManager.CreateRoom(roomID)
@@ -47,17 +53,27 @@ func (rc *RoomController) JoinRoom(roomID string, player *game.Player) {
 
 	rc.addPlayerToRoom(roomID, player)
 
-	//TODO check if room is full, if so start game
+	// check if room is full, if so start game
+	room, ok := rc.roomManager.GetRoom(roomID)
+	if ok != nil {
+		log.Println("Error getting room:", ok.Error())
+		return
+	}
 
-	// room, ok := rc.rooms[roomID]
-	// if !ok {
-	// 	log.Println("Room not found:", roomID)
-	// 	return
-	// }
+	if len(room.Players) >= 2 {
+		rc.StartGame(room)
+	}
+}
 
-	// if len(room.Players) >= 2 {
-	// 	rc.StartGame(roomID)
-	// }
+func (rc *RoomController) StartGame(room *Room) {
+	//TODO client should send TurnStarted message to server when recieve GameStarted message
+	room.StartGame(true)
+	currentPlayer := room.Players[room.currentPlayerId]
+	message := messages.Message{
+		Type:   messages.GameStarted,
+		Player: currentPlayer,
+	}
+	rc.sendMessageToRoom(room, &message)
 }
 
 func (rc *RoomController) addPlayerToRoom(roomID string, player *game.Player) {
@@ -67,26 +83,16 @@ func (rc *RoomController) addPlayerToRoom(roomID string, player *game.Player) {
 		return
 	}
 
-	message := messages.Message{
-		Type:   messages.JoinRoom,
-		Player: player,
-		RoomID: roomID,
-	}
-	rc.sendMessage(player, &message)
 	rc.notifyPlayerJoinedRoomToOthers(room, player)
 }
 
 func (rc *RoomController) notifyPlayerJoinedRoomToOthers(room *Room, player *game.Player) {
 	message := messages.Message{
-		Type:   messages.PlayerJoinedRoom,
+		Type:   messages.JoinRoom,
 		Player: player,
 		RoomID: room.ID,
 	}
-	for _, p := range room.Players {
-		if p != player {
-			rc.sendMessage(p, &message)
-		}
-	}
+	rc.sendMessageToRoom(room, &message)
 }
 
 func (rc *RoomController) ListRooms(player *game.Player) {
@@ -105,22 +111,26 @@ func (rc *RoomController) ListRooms(player *game.Player) {
 	rc.sendMessage(player, &message)
 }
 
-func (rc *RoomController) LeaveRoom(room *Room, player *game.Player) {
-	// for i, p := range room.Players {
-	// 	if p.Name == player.Name {
-	// 		room.Players = append(room.Players[:i], room.Players[i+1:]...)
-	// 		break
-	// 	}
-	// }
+func (rc *RoomController) LeaveRoom(roomID string, player *game.Player) {
+	err := rc.roomManager.LeaveRoom(roomID, player)
+	if err != nil {
+		log.Println("Error leaving room:", err.Error())
+		return
+	}
 
-	// message := messages.Message{
-	// 	Type:   messages.GameLeft,
-	// 	Player: player,
-	// }
-	// err := encoder.Encode(&message)
-	// if err != nil {
-	// 	log.Println("Error encoding message:", err.Error())
-	// }
+	message := messages.Message{
+		Type:   messages.LeaveRoom,
+		Player: player,
+		RoomID: roomID,
+	}
+	room := rc.roomManager.rooms[roomID]
+
+	rc.sendMessage(player, &message)
+	rc.sendMessageToRoom(room, &message)
+
+	if len(room.Players) == 0 {
+		rc.roomManager.DestroyRoom(roomID)
+	}
 }
 
 func (rc *RoomController) HandleMessage(message *messages.Message, player *game.Player) {
@@ -131,9 +141,7 @@ func (rc *RoomController) HandleMessage(message *messages.Message, player *game.
 		rc.addPlayerToRoom(message.RoomID, player)
 	case messages.ListRooms:
 		rc.ListRooms(player)
-		// case messages.LeaveRoom:
-		// 	room := rc.rooms[message.RoomID]
-		// 	rc.LeaveRoom(room, player, encoder)
+	case messages.LeaveRoom:
+		rc.LeaveRoom(message.RoomID, player)
 	}
-
 }
