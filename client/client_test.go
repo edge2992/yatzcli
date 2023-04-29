@@ -1,42 +1,12 @@
 package client
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 	"yatzcli/game"
 	"yatzcli/messages"
+	"yatzcli/network"
 )
-
-type mockConnection struct {
-	encodedMessages []interface{}
-	decodedMessages []interface{}
-	decodeIndex     int
-}
-
-func (m *mockConnection) Encode(e interface{}) error {
-	m.encodedMessages = append(m.encodedMessages, e)
-	return nil
-}
-
-func (m *mockConnection) Decode(e interface{}) error {
-	if m.decodeIndex >= len(m.decodedMessages) {
-		return errors.New("no more messages to decode")
-	}
-	msg := m.decodedMessages[m.decodeIndex]
-	m.decodeIndex++
-	switch v := e.(type) {
-	case *messages.Message:
-		*v = *msg.(*messages.Message)
-	default:
-		return errors.New("unsupported type")
-	}
-	return nil
-}
-
-func (m *mockConnection) Close() error {
-	return nil
-}
 
 type mockIOHandler struct {
 	displayedScoreboards [][]game.PlayerInfo
@@ -82,17 +52,17 @@ func (m *mockIOHandler) askRoomSelection([]string) string {
 }
 
 func TestSetReady(t *testing.T) {
-	conn := &mockConnection{}
+	conn := &network.MockConnection{}
 	ioHandler := &mockIOHandler{}
 	client := NewClient(conn, ioHandler)
 
 	client.setReady()
 
-	if len(conn.encodedMessages) != 1 {
-		t.Fatalf("Expected 1 encoded message, got %d", len(conn.encodedMessages))
+	if len(conn.EncodedMessages) != 1 {
+		t.Fatalf("Expected 1 encoded message, got %d", len(conn.EncodedMessages))
 	}
 
-	msg, ok := conn.encodedMessages[0].(*messages.Message)
+	msg, ok := conn.EncodedMessages[0].(*messages.Message)
 	if !ok {
 		t.Fatal("Expected messages.Message type")
 	}
@@ -103,7 +73,7 @@ func TestSetReady(t *testing.T) {
 }
 
 func TestHandleUpdateScorecard(t *testing.T) {
-	conn := &mockConnection{}
+	conn := &network.MockConnection{}
 	ioHandler := &mockIOHandler{}
 	client := NewClient(conn, ioHandler)
 
@@ -132,7 +102,7 @@ func TestHandleUpdateScorecard(t *testing.T) {
 }
 
 func TestHandleTurnStarted(t *testing.T) {
-	conn := &mockConnection{}
+	conn := &network.MockConnection{}
 	ioHandler := &mockIOHandler{}
 	client := NewClient(conn, ioHandler)
 
@@ -146,11 +116,11 @@ func TestHandleTurnStarted(t *testing.T) {
 		t.Fatal("Expected turnFlag to be set to true")
 	}
 
-	if len(conn.encodedMessages) != 1 {
-		t.Fatalf("Expected 1 encoded message, got %d", len(conn.encodedMessages))
+	if len(conn.EncodedMessages) != 1 {
+		t.Fatalf("Expected 1 encoded message, got %d", len(conn.EncodedMessages))
 	}
 
-	msg, ok := conn.encodedMessages[0].(*messages.Message)
+	msg, ok := conn.EncodedMessages[0].(*messages.Message)
 	if !ok {
 		t.Fatal("Expected messages.Message type")
 	}
@@ -161,7 +131,7 @@ func TestHandleTurnStarted(t *testing.T) {
 }
 
 func TestHandleDiceRolled(t *testing.T) {
-	conn := &mockConnection{}
+	conn := &network.MockConnection{}
 	ioHandler := &mockIOHandler{}
 	client := NewClient(conn, ioHandler)
 
@@ -191,11 +161,11 @@ func TestHandleDiceRolled(t *testing.T) {
 		t.Fatal("Displayed dice do not match the input dice")
 	}
 
-	if len(conn.encodedMessages) != 1 {
-		t.Fatalf("Expected 1 encoded message, got %d", len(conn.encodedMessages))
+	if len(conn.EncodedMessages) != 1 {
+		t.Fatalf("Expected 1 encoded message, got %d", len(conn.EncodedMessages))
 	}
 
-	msg, ok := conn.encodedMessages[0].(*messages.Message)
+	msg, ok := conn.EncodedMessages[0].(*messages.Message)
 	if !ok {
 		t.Fatal("Expected messages.Message type")
 	}
@@ -215,7 +185,7 @@ func TestHandleDiceRolled(t *testing.T) {
 }
 
 func TestReRollDice(t *testing.T) {
-	conn := &mockConnection{}
+	conn := &network.MockConnection{}
 	ioHandler := &mockIOHandler{}
 	client := NewClient(conn, ioHandler)
 
@@ -229,11 +199,11 @@ func TestReRollDice(t *testing.T) {
 
 	client.reRollDice(dice)
 
-	if len(conn.encodedMessages) != 1 {
-		t.Fatalf("Expected 1 encoded message, got %d", len(conn.encodedMessages))
+	if len(conn.EncodedMessages) != 1 {
+		t.Fatalf("Expected 1 encoded message, got %d", len(conn.EncodedMessages))
 	}
 
-	msg, ok := conn.encodedMessages[0].(*messages.Message)
+	msg, ok := conn.EncodedMessages[0].(*messages.Message)
 	if !ok {
 		t.Fatal("Expected messages.Message type")
 	}
@@ -248,7 +218,7 @@ func TestReRollDice(t *testing.T) {
 }
 
 func TestChooseCategory(t *testing.T) {
-	conn := &mockConnection{}
+	conn := &network.MockConnection{}
 	ioHandler := &mockIOHandler{}
 	client := NewClient(conn, ioHandler)
 
@@ -263,11 +233,11 @@ func TestChooseCategory(t *testing.T) {
 
 	client.chooseCategory(player, dice)
 
-	if len(conn.encodedMessages) != 1 {
-		t.Fatalf("Expected 1 encoded message, got %d", len(conn.encodedMessages))
+	if len(conn.EncodedMessages) != 1 {
+		t.Fatalf("Expected 1 encoded message, got %d", len(conn.EncodedMessages))
 	}
 
-	msg, ok := conn.encodedMessages[0].(*messages.Message)
+	msg, ok := conn.EncodedMessages[0].(*messages.Message)
 	if !ok {
 		t.Fatal("Expected messages.Message type")
 	}
