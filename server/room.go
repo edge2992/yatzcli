@@ -7,7 +7,7 @@ import (
 
 type Room struct {
 	ID              string
-	Players         []*game.Player
+	Players         []*Player
 	dices           []game.Dice
 	gameStarted     bool
 	gameTurnNum     int
@@ -18,17 +18,17 @@ type Room struct {
 func NewRoom(roomID string) *Room {
 	return &Room{
 		ID:      roomID,
-		Players: []*game.Player{},
+		Players: []*Player{},
 		dices:   game.CreateDices(),
 	}
 }
 
-func (room *Room) AddPlayer(player *game.Player) error {
+func (room *Room) AddPlayer(player *Player) error {
 	room.Players = append(room.Players, player)
 	return nil
 }
 
-func (room *Room) RemovePlayer(player *game.Player) error {
+func (room *Room) RemovePlayer(player *Player) error {
 	for i, p := range room.Players {
 		if p == player {
 			room.Players = append(room.Players[:i], room.Players[i+1:]...)
@@ -47,6 +47,6 @@ func (room *Room) StartGame(started_randomly bool) {
 	}
 }
 
-func (room *Room) GetCurrentPlayer() *game.Player {
+func (room *Room) GetCurrentPlayer() *Player {
 	return room.Players[room.currentPlayerId]
 }

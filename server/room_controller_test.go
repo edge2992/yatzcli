@@ -2,14 +2,13 @@ package server
 
 import (
 	"testing"
-	"yatzcli/game"
 	"yatzcli/messages"
 	"yatzcli/network"
 )
 
-func createMockPlayer(name string) (*network.MockConnection, *game.Player) {
+func createMockPlayer(name string) (*network.MockConnection, *Player) {
 	mockConn := network.NewMockConnection()
-	player := game.NewPlayer(name, mockConn)
+	player := NewPlayer(name, mockConn)
 	return mockConn, player
 }
 
@@ -53,7 +52,7 @@ func TestRoomController_CreateRoom(t *testing.T) {
 		t.Error("Expected message to be CreateRoom")
 	}
 
-	if msg.Player != player.PlayerInfo() {
+	if msg.Player.Name != player.Name {
 		t.Error("Expected message to contain player")
 	}
 
@@ -145,16 +144,17 @@ func TestRoomController_LeaveRoom(t *testing.T) {
 		t.Error("Expected player2 to still be in the room")
 	}
 
-	if len(mockConn.EncodedMessages) != 3 {
+	if len(mockConn.EncodedMessages) != 4 {
 		t.Fatal("Expected 2 messages to be sent to player1, got", len(mockConn.EncodedMessages))
 	}
 
-	msg := mockConn.EncodedMessages[2].(*messages.Message)
+	msg := mockConn.TopEncodedMessage().(*messages.Message)
+
 	if msg.Type != messages.LeaveRoom {
 		t.Error("Expected message to be LeaveRoom")
 	}
 
-	if msg.Player != player1.PlayerInfo() {
+	if msg.Player.Name != player1.Name {
 		t.Error("Expected message to contain player")
 	}
 

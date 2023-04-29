@@ -27,7 +27,7 @@ func (gpc *GamePlayController) BroadcastMessageToRoom(room *Room, message *messa
 }
 
 // Turn count is set to 1, all dice are reset, and a TurnStarted message is sent to the player
-func (gpc *GamePlayController) StartTurn(roomID string, player *game.Player) {
+func (gpc *GamePlayController) StartTurn(roomID string, player *Player) {
 	room, err := gpc.roomManager.GetRoom(roomID)
 	if err != nil {
 		log.Println("Error getting room:", err.Error())
@@ -83,7 +83,7 @@ func (gpc *GamePlayController) GameOver(roomID string) {
 	gpc.BroadcastMessageToRoom(room, &message)
 }
 
-func (gpc *GamePlayController) RollDice(roomID string, player *game.Player) {
+func (gpc *GamePlayController) RollDice(roomID string, player *Player) {
 	room, err := gpc.roomManager.GetRoom(roomID)
 	if err != nil {
 		log.Println("Error getting room:", err.Error())
@@ -102,7 +102,7 @@ func (gpc *GamePlayController) RollDice(roomID string, player *game.Player) {
 	gpc.BroadcastMessageToRoom(room, &message)
 }
 
-func (gpc *GamePlayController) RerollDice(roomID string, player *game.Player, dice []game.Dice) {
+func (gpc *GamePlayController) RerollDice(roomID string, player *Player, dice []game.Dice) {
 	room, err := gpc.roomManager.GetRoom(roomID)
 	if err != nil {
 		log.Println("Error getting room:", err.Error())
@@ -127,7 +127,7 @@ func (gpc *GamePlayController) RerollDice(roomID string, player *game.Player, di
 	gpc.RollDice(roomID, player)
 }
 
-func (gpc *GamePlayController) ChooseScoreCategory(roomID string, player *game.Player, category game.ScoreCategory) {
+func (gpc *GamePlayController) ChooseScoreCategory(roomID string, player *Player, category game.ScoreCategory) {
 	room, err := gpc.roomManager.GetRoom(roomID)
 	if err != nil {
 		log.Println("Error getting room:", err.Error())
@@ -165,7 +165,7 @@ func (gpc *GamePlayController) UpdateScoreCard(roomID string) {
 	gpc.BroadcastMessageToRoom(room, &message)
 }
 
-func (gpc *GamePlayController) HandleMessage(message *messages.Message, player *game.Player) {
+func (gpc *GamePlayController) HandleMessage(message *messages.Message, player *Player) {
 	switch message.Type {
 	case messages.TurnStarted:
 		gpc.StartTurn(message.RoomID, player)

@@ -2,7 +2,6 @@ package server
 
 import (
 	"log"
-	"yatzcli/game"
 	"yatzcli/messages"
 
 	"github.com/google/uuid"
@@ -18,7 +17,7 @@ func NewRoomController(rm *RoomManager) *RoomController {
 	}
 }
 
-func (rc *RoomController) sendMessage(player *game.Player, message *messages.Message) {
+func (rc *RoomController) sendMessage(player *Player, message *messages.Message) {
 	err := player.Connection.Encode(message)
 	if err != nil {
 		log.Println("Error encoding message:", err.Error())
@@ -31,7 +30,7 @@ func (rc *RoomController) sendMessageToRoom(room *Room, message *messages.Messag
 	}
 }
 
-func (rc *RoomController) CreateRoom(player *game.Player) {
+func (rc *RoomController) CreateRoom(player *Player) {
 	roomID := uuid.New().String()
 	_, err := rc.roomManager.CreateRoom(roomID)
 	if err != nil {
@@ -49,7 +48,7 @@ func (rc *RoomController) CreateRoom(player *game.Player) {
 	rc.sendMessage(player, &message)
 }
 
-func (rc *RoomController) JoinRoom(roomID string, player *game.Player) {
+func (rc *RoomController) JoinRoom(roomID string, player *Player) {
 
 	rc.addPlayerToRoom(roomID, player)
 
@@ -80,7 +79,7 @@ func (rc *RoomController) StartGame(room *Room) {
 	rc.sendMessageToRoom(room, &message)
 }
 
-func (rc *RoomController) addPlayerToRoom(roomID string, player *game.Player) {
+func (rc *RoomController) addPlayerToRoom(roomID string, player *Player) {
 	room, err := rc.roomManager.JoinRoom(roomID, player)
 	if err != nil {
 		log.Println("Error joining room:", err.Error())
@@ -90,7 +89,7 @@ func (rc *RoomController) addPlayerToRoom(roomID string, player *game.Player) {
 	rc.notifyPlayerJoinedRoomToOthers(room, player)
 }
 
-func (rc *RoomController) notifyPlayerJoinedRoomToOthers(room *Room, player *game.Player) {
+func (rc *RoomController) notifyPlayerJoinedRoomToOthers(room *Room, player *Player) {
 	message := messages.Message{
 		Type:   messages.JoinRoom,
 		Player: player.PlayerInfo(),
@@ -99,7 +98,7 @@ func (rc *RoomController) notifyPlayerJoinedRoomToOthers(room *Room, player *gam
 	rc.sendMessageToRoom(room, &message)
 }
 
-func (rc *RoomController) ListRooms(player *game.Player) {
+func (rc *RoomController) ListRooms(player *Player) {
 	rooms := rc.roomManager.ListRooms()
 
 	roomList := make([]string, 0, len(rooms))
@@ -115,7 +114,7 @@ func (rc *RoomController) ListRooms(player *game.Player) {
 	rc.sendMessage(player, &message)
 }
 
-func (rc *RoomController) LeaveRoom(roomID string, player *game.Player) {
+func (rc *RoomController) LeaveRoom(roomID string, player *Player) {
 	err := rc.roomManager.LeaveRoom(roomID, player)
 	if err != nil {
 		log.Println("Error leaving room:", err.Error())
@@ -137,7 +136,7 @@ func (rc *RoomController) LeaveRoom(roomID string, player *game.Player) {
 	}
 }
 
-func (rc *RoomController) HandleMessage(message *messages.Message, player *game.Player) {
+func (rc *RoomController) HandleMessage(message *messages.Message, player *Player) {
 	switch message.Type {
 	case messages.CreateRoom:
 		rc.CreateRoom(player)

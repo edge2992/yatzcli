@@ -120,7 +120,7 @@ func TestGamePlayController_StartTurn(t *testing.T) {
 		t.Error("Expected TurnStarted message, got:", msg.Type)
 	}
 
-	if msg.Player != player.PlayerInfo() {
+	if msg.Player.Name != player.PlayerInfo().Name {
 		t.Error("Expected message player to be the current player")
 	}
 }
@@ -163,7 +163,7 @@ func TestGamePlayController_ChooseScoreCategory(t *testing.T) {
 		t.Error("Expected next player to be:", nextPlayer.Name)
 	}
 
-	if room.GetCurrentPlayer() == player {
+	if room.GetCurrentPlayer().Name == player.Name {
 		t.Error("Expected next player to not be:", player.Name)
 	}
 
@@ -175,7 +175,7 @@ func TestGamePlayController_ChooseScoreCategory(t *testing.T) {
 		t.Error("Expected TurnStarted message, got:", msg.Type)
 	}
 
-	if msg.Player != nextPlayer.PlayerInfo() {
+	if msg.Player.Name != nextPlayer.PlayerInfo().Name {
 		t.Error("Expected message player to be the next player")
 	}
 
@@ -196,6 +196,10 @@ func TestGamePlayController_UpdateScoreCard(t *testing.T) {
 	gpc.UpdateScoreCard(room.ID)
 
 	// Check that an UpdateScorecard message has been sent to all players
+	roomPlayers := make([]*game.PlayerInfo, 0)
+	for _, p := range room.Players {
+		roomPlayers = append(roomPlayers, p.PlayerInfo())
+	}
 	for _, p := range room.Players {
 		mockConn := p.Connection.(*network.MockConnection)
 		msg := mockConn.TopEncodedMessage().(*messages.Message)
@@ -204,7 +208,7 @@ func TestGamePlayController_UpdateScoreCard(t *testing.T) {
 			t.Error("Expected UpdateScorecard message, got:", msg.Type)
 		}
 
-		if !reflect.DeepEqual(msg.Players, room.Players) {
+		if !reflect.DeepEqual(msg.Players, roomPlayers) {
 			t.Error("Expected message players to be the same as room players")
 		}
 	}
