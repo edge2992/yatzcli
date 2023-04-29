@@ -26,27 +26,7 @@ func (gpc *GamePlayController) BroadcastMessageToRoom(room *Room, message *messa
 	}
 }
 
-func (gpc *GamePlayController) StartGame(roomID string) {
-	room, err := gpc.roomManager.GetRoom(roomID)
-	if err != nil {
-		log.Println("Error getting room:", err.Error())
-		return
-	}
-	if room.gameStarted {
-		log.Println("Game already started")
-		return
-	}
-	room.gameStarted = true
-	room.currentPlayerId = 0
-
-	message := messages.Message{
-		Type: messages.GameStarted,
-	}
-	gpc.BroadcastMessageToRoom(room, &message)
-
-	gpc.StartTurn(roomID, room.Players[room.currentPlayerId])
-}
-
+// Turn count is set to 1, all dice are reset, and a TurnStarted message is sent to the player
 func (gpc *GamePlayController) StartTurn(roomID string, player *game.Player) {
 	room, err := gpc.roomManager.GetRoom(roomID)
 	if err != nil {

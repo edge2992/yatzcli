@@ -29,6 +29,13 @@ func (rm *RoomManager) CreateRoom(roomID string) (*Room, error) {
 	return newRoom, nil
 }
 
+func (rm *RoomManager) DestroyRoom(roomID string) {
+	rm.mutex.Lock()
+	defer rm.mutex.Unlock()
+
+	delete(rm.rooms, roomID)
+}
+
 func (rm *RoomManager) JoinRoom(roomID string, player *game.Player) (*Room, error) {
 	rm.mutex.Lock()
 	defer rm.mutex.Unlock()
@@ -44,8 +51,13 @@ func (rm *RoomManager) JoinRoom(roomID string, player *game.Player) (*Room, erro
 	return room, nil
 }
 
-func (rm *RoomManager) LeaveRoom() {
-	// TODO implement
+func (rm *RoomManager) LeaveRoom(roomID string, player *game.Player) error {
+	room, err := rm.GetRoom(roomID)
+	if err != nil {
+		return err
+	}
+
+	return room.RemovePlayer(player)
 }
 
 func (rm *RoomManager) ListRooms() []*Room {
@@ -68,4 +80,14 @@ func (rm *RoomManager) GetRoom(roomID string) (*Room, error) {
 		return nil, errors.New("Room does not exist")
 	}
 	return room, nil
+}
+
+func (rm *RoomManager) StartGame(roomID string, started_randomly bool) error {
+	room, err := rm.GetRoom(roomID)
+	if err != nil {
+		return err
+	}
+
+	room.StartGame(started_randomly)
+	return nil
 }

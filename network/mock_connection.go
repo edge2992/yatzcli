@@ -38,3 +38,10 @@ func (m *MockConnection) Close() error {
 func (m *MockConnection) PushMessage(e interface{}) {
 	m.DecodedMessages = append(m.DecodedMessages, e)
 }
+
+func (m *MockConnection) TopEncodedMessage() interface{} {
+	if len(m.EncodedMessages) == 0 {
+		return nil
+	}
+	return m.EncodedMessages[len(m.EncodedMessages)-1]
+}
