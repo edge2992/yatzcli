@@ -1,13 +1,14 @@
 package network
 
 import (
-	"fmt"
-	"reflect"
+	"errors"
+	"yatzcli/messages"
 )
 
 type MockConnection struct {
 	EncodedMessages []interface{}
 	DecodedMessages []interface{}
+	decodeIndex     int
 }
 
 func NewMockConnection() *MockConnection {
@@ -23,11 +24,17 @@ func (m *MockConnection) Encode(e interface{}) error {
 }
 
 func (m *MockConnection) Decode(e interface{}) error {
-	if len(m.DecodedMessages) == 0 {
-		return fmt.Errorf("no more messages to decode")
+	if m.decodeIndex >= len(m.DecodedMessages) {
+		return errors.New("no more messages to decode")
 	}
-	reflect.ValueOf(e).Elem().Set(reflect.ValueOf(m.DecodedMessages[0]).Elem())
-	m.DecodedMessages = m.DecodedMessages[1:]
+	msg := m.DecodedMessages[m.decodeIndex]
+	m.decodeIndex++
+	switch v := e.(type) {
+	case *messages.Message:
+		*v = *msg.(*messages.Message)
+	default:
+		return errors.New("unsupported type")
+	}
 	return nil
 }
 
