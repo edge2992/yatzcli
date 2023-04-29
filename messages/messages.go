@@ -33,8 +33,8 @@ const (
 
 type Message struct {
 	Type          MessageType
-	Players       []*game.Player
-	Player        *game.Player
+	Players       []*game.PlayerInfo
+	Player        *game.PlayerInfo
 	CurrentPlayer string
 	Dice          []game.Dice
 	DiceRolls     int

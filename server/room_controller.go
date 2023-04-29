@@ -4,6 +4,7 @@ import (
 	"log"
 	"yatzcli/game"
 	"yatzcli/messages"
+	"yatzcli/network"
 
 	"github.com/google/uuid"
 )
@@ -19,6 +20,8 @@ func NewRoomController(rm *RoomManager) *RoomController {
 }
 
 func (rc *RoomController) sendMessage(player *game.Player, message *messages.Message) {
+	log.Println("Sending message:", message)
+	log.Println(player.Connection.(*network.GobConnection).String())
 	err := player.Connection.Encode(message)
 	if err != nil {
 		log.Println("Error encoding message:", err.Error())
@@ -43,7 +46,7 @@ func (rc *RoomController) CreateRoom(player *game.Player) {
 
 	message := messages.Message{
 		Type:   messages.CreateRoom,
-		Player: player,
+		Player: player.PlayerInfo(),
 		RoomID: roomID,
 	}
 	rc.sendMessage(player, &message)
@@ -54,24 +57,30 @@ func (rc *RoomController) JoinRoom(roomID string, player *game.Player) {
 	rc.addPlayerToRoom(roomID, player)
 
 	// check if room is full, if so start game
+	println("Room ID:", roomID)
 	room, ok := rc.roomManager.GetRoom(roomID)
 	if ok != nil {
 		log.Println("Error getting room:", ok.Error())
 		return
 	}
+	println("Room:", room)
 
 	if len(room.Players) >= 2 {
 		rc.StartGame(room)
+	} else {
+		log.Printf("Room %s has %d players, waiting for more players to join\n", roomID, len(room.Players))
 	}
 }
 
 func (rc *RoomController) StartGame(room *Room) {
 	//TODO client should send TurnStarted message to server when recieve GameStarted message
+	log.Println("Starting game in room:", room.ID)
 	room.StartGame(true)
 	currentPlayer := room.Players[room.currentPlayerId]
 	message := messages.Message{
 		Type:   messages.GameStarted,
-		Player: currentPlayer,
+		Player: currentPlayer.PlayerInfo(),
+		RoomID: room.ID,
 	}
 	rc.sendMessageToRoom(room, &message)
 }
@@ -87,9 +96,10 @@ func (rc *RoomController) addPlayerToRoom(roomID string, player *game.Player) {
 }
 
 func (rc *RoomController) notifyPlayerJoinedRoomToOthers(room *Room, player *game.Player) {
+	log.Println("notifyPlayerJoinedRoomToOthers")
 	message := messages.Message{
 		Type:   messages.JoinRoom,
-		Player: player,
+		Player: player.PlayerInfo(),
 		RoomID: room.ID,
 	}
 	rc.sendMessageToRoom(room, &message)
@@ -105,7 +115,7 @@ func (rc *RoomController) ListRooms(player *game.Player) {
 
 	message := messages.Message{
 		Type:     messages.ListRoomsResponse,
-		Player:   player,
+		Player:   player.PlayerInfo(),
 		RoomList: roomList,
 	}
 	rc.sendMessage(player, &message)
@@ -120,7 +130,7 @@ func (rc *RoomController) LeaveRoom(roomID string, player *game.Player) {
 
 	message := messages.Message{
 		Type:   messages.LeaveRoom,
-		Player: player,
+		Player: player.PlayerInfo(),
 		RoomID: roomID,
 	}
 	room := rc.roomManager.rooms[roomID]
@@ -138,7 +148,7 @@ func (rc *RoomController) HandleMessage(message *messages.Message, player *game.
 	case messages.CreateRoom:
 		rc.CreateRoom(player)
 	case messages.JoinRoom:
-		rc.addPlayerToRoom(message.RoomID, player)
+		rc.JoinRoom(message.RoomID, player)
 	case messages.ListRooms:
 		rc.ListRooms(player)
 	case messages.LeaveRoom:

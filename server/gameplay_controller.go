@@ -50,7 +50,7 @@ func (gpc *GamePlayController) StartTurn(roomID string, player *game.Player) {
 
 	message := messages.Message{
 		Type:   messages.TurnStarted,
-		Player: player,
+		Player: player.PlayerInfo(),
 	}
 	errEncode := player.Connection.Encode(&message)
 	if errEncode != nil {
@@ -69,9 +69,14 @@ func (gpc *GamePlayController) GameOver(roomID string) {
 	}
 	room.gameStarted = false
 
+	players := []*game.PlayerInfo{}
+	for _, player := range room.Players {
+		players = append(players, player.PlayerInfo())
+	}
+
 	message := messages.Message{
 		Type:    messages.GameOver,
-		Players: room.Players,
+		Players: players,
 	}
 	gpc.BroadcastMessageToRoom(room, &message)
 }
@@ -87,7 +92,7 @@ func (gpc *GamePlayController) RollDice(roomID string, player *game.Player) {
 
 	message := messages.Message{
 		Type:      messages.DiceRolled,
-		Player:    player,
+		Player:    player.PlayerInfo(),
 		Dice:      room.dices,
 		DiceRolls: room.diceRolls,
 	}
@@ -143,9 +148,15 @@ func (gpc *GamePlayController) UpdateScoreCard(roomID string) {
 		log.Println("Error getting room:", err.Error())
 		return
 	}
+
+	players := []*game.PlayerInfo{}
+	for _, player := range room.Players {
+		players = append(players, player.PlayerInfo())
+	}
+
 	message := messages.Message{
 		Type:    messages.UpdateScorecard,
-		Players: room.Players,
+		Players: players,
 	}
 	gpc.BroadcastMessageToRoom(room, &message)
 }

@@ -13,6 +13,11 @@ type Player struct {
 	Connection network.Connection `gob:"-"`
 }
 
+type PlayerInfo struct {
+	Name      string
+	ScoreCard ScoreCard
+}
+
 func NewPlayer(name string, conn network.Connection) *Player {
 	player := Player{
 		Name:       name,
@@ -41,6 +46,13 @@ func CreateGameState(players []Player) map[string]*Player {
 		gameState[players[i].Name] = &players[i]
 	}
 	return gameState
+}
+
+func (p *Player) PlayerInfo() *PlayerInfo {
+	return &PlayerInfo{
+		Name:      p.Name,
+		ScoreCard: p.ScoreCard,
+	}
 }
 
 func CreateDices() []Dice {
