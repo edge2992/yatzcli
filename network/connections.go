@@ -36,3 +36,7 @@ func (g *GobConnection) Decode(e interface{}) error {
 func (g *GobConnection) Close() error {
 	return g.conn.Close()
 }
+
+func (g *GobConnection) String() string {
+	return g.conn.RemoteAddr().String()
+}

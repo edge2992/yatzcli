@@ -53,7 +53,7 @@ func TestRoomController_CreateRoom(t *testing.T) {
 		t.Error("Expected message to be CreateRoom")
 	}
 
-	if msg.Player != player {
+	if msg.Player != player.PlayerInfo() {
 		t.Error("Expected message to contain player")
 	}
 
@@ -154,7 +154,7 @@ func TestRoomController_LeaveRoom(t *testing.T) {
 		t.Error("Expected message to be LeaveRoom")
 	}
 
-	if msg.Player != player1 {
+	if msg.Player != player1.PlayerInfo() {
 		t.Error("Expected message to contain player")
 	}
 

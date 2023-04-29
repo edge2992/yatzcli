@@ -39,16 +39,16 @@ func (m *mockConnection) Close() error {
 }
 
 type mockIOHandler struct {
-	displayedScoreboards [][]game.Player
+	displayedScoreboards [][]game.PlayerInfo
 	displayedDice        [][]game.Dice
 	getHoldInputCalls    [][]game.Dice
 	chooseCategoryCalls  []struct {
-		player *game.Player
+		player *game.PlayerInfo
 		dice   []game.Dice
 	}
 }
 
-func (m *mockIOHandler) DisplayCurrentScoreboard(players []game.Player) {
+func (m *mockIOHandler) DisplayCurrentScoreboard(players []game.PlayerInfo) {
 	m.displayedScoreboards = append(m.displayedScoreboards, players)
 }
 
@@ -61,12 +61,24 @@ func (m *mockIOHandler) GetPlayerHoldInput(dice []game.Dice) []int {
 	return []int{1, 3}
 }
 
-func (m *mockIOHandler) ChooseCategory(player *game.Player, dice []game.Dice) game.ScoreCategory {
+func (m *mockIOHandler) ChooseCategory(player *game.PlayerInfo, dice []game.Dice) game.ScoreCategory {
 	m.chooseCategoryCalls = append(m.chooseCategoryCalls, struct {
-		player *game.Player
+		player *game.PlayerInfo
 		dice   []game.Dice
 	}{player, dice})
 	return game.Ones
+}
+
+func (m *mockIOHandler) askJoinOrCreateRoom() ChoiceType {
+	return JoinRoom
+}
+
+func (m *mockIOHandler) askRoomName() string {
+	return ""
+}
+
+func (m *mockIOHandler) askRoomSelection([]string) string {
+	return ""
 }
 
 func TestSetReady(t *testing.T) {
@@ -95,12 +107,12 @@ func TestHandleUpdateScorecard(t *testing.T) {
 	ioHandler := &mockIOHandler{}
 	client := NewClient(conn, ioHandler)
 
-	player1 := &game.Player{Name: "player1"}
-	player2 := &game.Player{Name: "player2"}
+	player1 := &game.PlayerInfo{Name: "player1"}
+	player2 := &game.PlayerInfo{Name: "player2"}
 
 	msg := &messages.Message{
 		Type:    messages.UpdateScorecard,
-		Players: []*game.Player{player1, player2},
+		Players: []*game.PlayerInfo{player1, player2},
 	}
 
 	client.handleUpdateScorecard(msg)
@@ -240,7 +252,7 @@ func TestChooseCategory(t *testing.T) {
 	ioHandler := &mockIOHandler{}
 	client := NewClient(conn, ioHandler)
 
-	player := &game.Player{Name: "player1"}
+	player := &game.PlayerInfo{Name: "player1"}
 	dice := []game.Dice{
 		{Value: 1, Held: false},
 		{Value: 2, Held: false},

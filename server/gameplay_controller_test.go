@@ -120,7 +120,7 @@ func TestGamePlayController_StartTurn(t *testing.T) {
 		t.Error("Expected TurnStarted message, got:", msg.Type)
 	}
 
-	if msg.Player != player {
+	if msg.Player != player.PlayerInfo() {
 		t.Error("Expected message player to be the current player")
 	}
 }
@@ -175,7 +175,7 @@ func TestGamePlayController_ChooseScoreCategory(t *testing.T) {
 		t.Error("Expected TurnStarted message, got:", msg.Type)
 	}
 
-	if msg.Player != nextPlayer {
+	if msg.Player != nextPlayer.PlayerInfo() {
 		t.Error("Expected message player to be the next player")
 	}
 
