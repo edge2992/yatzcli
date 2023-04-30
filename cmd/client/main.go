@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
+	// gob.Register(&network.GobConnection{})
 	conn, err := client.Connect()
 	if err != nil {
 		log.Fatal(err)

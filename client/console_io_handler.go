@@ -38,7 +38,7 @@ func (c *ConsoleIOHandler) GetPlayerHoldInput(dice []game.Dice) []int {
 	return selectedIndices
 }
 
-func (c *ConsoleIOHandler) ChooseCategory(player *game.Player, dice []game.Dice) game.ScoreCategory {
+func (c *ConsoleIOHandler) ChooseCategory(player *game.PlayerInfo, dice []game.Dice) game.ScoreCategory {
 	availableCategories := []string{}
 	for cat, filled := range player.ScoreCard.Filled {
 		if !filled {
@@ -55,7 +55,7 @@ func (c *ConsoleIOHandler) ChooseCategory(player *game.Player, dice []game.Dice)
 	return game.ScoreCategory(strings.Split(selectedCategory, "\t")[0])
 }
 
-func (c *ConsoleIOHandler) DisplayCurrentScoreboard(players []game.Player) {
+func (c *ConsoleIOHandler) DisplayCurrentScoreboard(players []game.PlayerInfo) {
 	fmt.Println("\nCurrent Scoreboard:")
 
 	table := tablewriter.NewWriter(os.Stdout)
@@ -96,4 +96,38 @@ func (c *ConsoleIOHandler) DisplayDice(dice []game.Dice) {
 		color.Unset()
 	}
 	fmt.Println()
+}
+
+func (c *ConsoleIOHandler) askJoinOrCreateRoom() ChoiceType {
+	var joinOrCreate string
+	prompt := &survey.Select{
+		Message: "Do you want to join or create a room?",
+		Options: []string{"Join", "Create"},
+	}
+	survey.AskOne(prompt, &joinOrCreate)
+
+	if joinOrCreate == "Join" {
+		return JoinRoom
+	} else {
+		return CreateRoom
+	}
+}
+
+func (c *ConsoleIOHandler) askRoomName() string {
+	var roomName string
+	prompt := &survey.Input{
+		Message: "Enter a name for the new room:",
+	}
+	survey.AskOne(prompt, &roomName)
+	return roomName
+}
+
+func (c *ConsoleIOHandler) askRoomSelection(rooms []string) string {
+	var selectedRoom string
+	prompt := &survey.Select{
+		Message: "Select a room to join:",
+		Options: rooms,
+	}
+	survey.AskOne(prompt, &selectedRoom)
+	return selectedRoom
 }

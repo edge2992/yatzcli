@@ -88,7 +88,7 @@ func CategoryWithScore(dice []Dice, categories []string) []string {
 }
 
 // ---------- Display Functions ----------
-func DisplayFinalScores(players []Player) {
+func DisplayFinalScores(players []PlayerInfo) {
 	fmt.Println("\nFinal Scores:")
 	for _, player := range players {
 		fmt.Printf("%s: %d\n", player.Name, CalculateTotalScore(player.ScoreCard))

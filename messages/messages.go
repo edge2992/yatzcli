@@ -11,6 +11,7 @@ const (
 	GameStarted
 	PlayerReady
 	PlayerJoined
+	PlayerJoinedRoom
 	PlayerLeft
 	DiceRolled
 	RerollDice
@@ -21,14 +22,24 @@ const (
 	RollDice
 	UpdateGameState
 	GameOver
+	CreateRoom
+	JoinRoom
+	LeaveRoom
+	ListRooms
+	ListRoomsResponse
+	WaitForPlayers
+	RoomFull
+	ServerJoin
 )
 
 type Message struct {
 	Type          MessageType
-	Players       []*game.Player
-	Player        *game.Player
+	Players       []*game.PlayerInfo
+	Player        *game.PlayerInfo
 	CurrentPlayer string
 	Dice          []game.Dice
 	DiceRolls     int
 	Category      game.ScoreCategory
+	RoomID        string
+	RoomList      []string
 }

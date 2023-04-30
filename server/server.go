@@ -1,12 +1,12 @@
 package server
 
 import (
-	"encoding/gob"
 	"log"
 	"net"
 	"strconv"
 
-	"yatzcli/game"
+	"yatzcli/messages"
+	"yatzcli/network"
 )
 
 const (
@@ -15,7 +15,7 @@ const (
 )
 
 type ConnectionHandler interface {
-	HandleConnection(encoder *gob.Encoder, decoder *gob.Decoder, player *game.Player)
+	HandleConnection(player *Player)
 	NumberOfConnetedPlayers() int
 }
 
@@ -48,11 +48,16 @@ func (s *Server) Start() {
 		}
 		log.Println("Client connected")
 
-		encoder := gob.NewEncoder(conn)
-		decoder := gob.NewDecoder(conn)
+		gobConn := network.NewGobConnection(conn)
+		playerName := "Player " + strconv.Itoa(s.handler.NumberOfConnetedPlayers())
+		player := NewPlayer(playerName, gobConn)
 
-		player := game.NewPlayer("Player " + strconv.Itoa(s.handler.NumberOfConnetedPlayers()))
+		msg := &messages.Message{
+			Type:   messages.ServerJoin,
+			Player: player.PlayerInfo(),
+		}
+		player.Connection.Encode(msg)
 
-		go s.handler.HandleConnection(encoder, decoder, player)
+		go s.handler.HandleConnection(player)
 	}
 }
