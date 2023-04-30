@@ -49,6 +49,10 @@ func (c *Client) waitForServerJoin() error {
 	if err != nil {
 		return err
 	}
+	return c.handleServerJoinMessage(message)
+}
+
+func (c *Client) handleServerJoinMessage(message *messages.Message) error {
 	if message.Type != messages.ServerJoin {
 		return fmt.Errorf("expected ServerJoin message, got %d", message.Type)
 	}
@@ -85,28 +89,13 @@ func (c *Client) handleMessages() {
 func (c *Client) processMessage(message *messages.Message) {
 	switch message.Type {
 	case messages.CreateRoom:
-		// c.Player = message.Player
-		log.Println("Room created: ", message.RoomID)
-		// log.Println("Player created: ", c.Player.Name)
+		c.handleCreateRoomMessage(message)
 	case messages.JoinRoom:
-		log.Println("Room joined: ", message.Player.Name)
-	case messages.GameJoined:
-		log.Println("Game joined by: ", message.Player.Name)
-		c.Player = message.Player
-		c.setReady()
-	case messages.PlayerJoined:
-		log.Println("Player joined: ", message.Player.Name)
+		c.handleJoinRoomMessage(message)
 	case messages.PlayerLeft:
-		log.Println("Player left: ", message.Player.Name)
+		c.handleLeaveRoomMessage(message)
 	case messages.GameStarted:
-		log.Println("Game started")
-		if c.Player.Name == message.Player.Name {
-			message := &messages.Message{
-				Type:   messages.TurnStarted,
-				RoomID: message.RoomID,
-			}
-			c.connection.Encode(message)
-		}
+		c.handleGameStartedMessage(message)
 	case messages.UpdateScorecard:
 		c.handleUpdateScorecard(message)
 	case messages.TurnStarted:
@@ -114,8 +103,7 @@ func (c *Client) processMessage(message *messages.Message) {
 	case messages.DiceRolled:
 		c.handleDiceRolled(message)
 	case messages.GameOver:
-		log.Println("Game over")
-		// TODO - display winner
+		c.handleGameOverMessage(message)
 	default:
 		fmt.Println("Unknown message type:", message.Type)
 	}
@@ -162,11 +150,32 @@ func (c *Client) JoinRoom(roomID string) {
 	c.sendMessage(&message)
 }
 
-func (c *Client) setReady() {
-	message := messages.Message{
-		Type: messages.PlayerReady,
+func (c *Client) handleCreateRoomMessage(message *messages.Message) {
+	log.Println("Room created: ", message.RoomID)
+}
+
+func (c *Client) handleJoinRoomMessage(message *messages.Message) {
+	log.Println("Room joined: ", message.RoomID, message.Player.Name)
+}
+
+func (c *Client) handleLeaveRoomMessage(message *messages.Message) {
+	log.Println("Player left: ", message.Player.Name)
+}
+
+func (c *Client) handleGameStartedMessage(message *messages.Message) {
+	log.Println("Game started")
+	if c.Player.Name == message.Player.Name {
+		message := &messages.Message{
+			Type:   messages.TurnStarted,
+			RoomID: message.RoomID,
+		}
+		c.sendMessage(message)
 	}
-	c.sendMessage(&message)
+}
+
+func (c *Client) handleGameOverMessage(message *messages.Message) {
+	log.Println("Game over")
+	// TODO - display winner
 }
 
 func (c *Client) handleUpdateScorecard(message *messages.Message) {

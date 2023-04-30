@@ -46,27 +46,6 @@ func TestJoinRoom(t *testing.T) {
 	}
 }
 
-func TestSetReady(t *testing.T) {
-	conn := &network.MockConnection{}
-	ioHandler := &MockIOHandler{}
-	client := NewClient(conn, ioHandler)
-
-	client.setReady()
-
-	if len(conn.EncodedMessages) != 1 {
-		t.Fatalf("Expected 1 encoded message, got %d", len(conn.EncodedMessages))
-	}
-
-	msg, ok := conn.EncodedMessages[0].(*messages.Message)
-	if !ok {
-		t.Fatal("Expected messages.Message type")
-	}
-
-	if msg.Type != messages.PlayerReady {
-		t.Fatalf("Expected message type to be PlayerReady, got %d", msg.Type)
-	}
-}
-
 func TestHandleUpdateScorecard(t *testing.T) {
 	conn := &network.MockConnection{}
 	ioHandler := &MockIOHandler{}
