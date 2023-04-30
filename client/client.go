@@ -92,7 +92,7 @@ func (c *Client) processMessage(message *messages.Message) {
 		c.handleCreateRoomMessage(message)
 	case messages.RoomJoined:
 		c.handleJoinRoomMessage(message)
-	case messages.PlayerLeft:
+	case messages.RoomLeft:
 		c.handleLeaveRoomMessage(message)
 	case messages.GameStarted:
 		c.handleGameStartedMessage(message)

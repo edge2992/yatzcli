@@ -11,17 +11,11 @@ const (
 	RoomCreated
 	RoomJoined
 	RoomLeft
-	GamePlayerJoined
-	GamePlayerLeft
-	GameStart
 	GameStarted
 	GameOver
-	PlayerLeft
 	DiceRolled
 	TurnStarted
-	TurnPlayed
 	UpdateScorecard
-	UpdateGameState
 	RequestRollDice
 	RequestRerollDice
 	RequestChooseCategory

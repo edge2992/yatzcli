@@ -49,7 +49,7 @@ func TestRoomController_CreateRoom(t *testing.T) {
 
 	msg := mockConn.EncodedMessages[0].(*messages.Message)
 	if msg.Type != messages.RoomCreated {
-		t.Error("Expected message to be CreateRoom")
+		t.Error("Expected message to be RoomCreated")
 	}
 
 	if msg.Player.Name != player.Name {
