@@ -169,11 +169,11 @@ func (gpc *GamePlayController) HandleMessage(message *messages.Message, player *
 	switch message.Type {
 	case messages.TurnStarted:
 		gpc.StartTurn(message.RoomID, player)
-	case messages.DiceRolled:
+	case messages.RequestRollDice:
 		gpc.RollDice(message.RoomID, player)
-	case messages.RerollDice:
+	case messages.RequestRerollDice:
 		gpc.RerollDice(message.RoomID, player, message.Dice)
-	case messages.ChooseCategory:
+	case messages.RequestChooseCategory:
 		gpc.ChooseScoreCategory(message.RoomID, player, message.Category)
 	}
 }
