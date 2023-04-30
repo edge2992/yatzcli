@@ -36,35 +36,41 @@ func Connect() (network.Connection, error) {
 	return gobConnection, nil
 }
 
-func (c *Client) Run() {
-	defer c.connection.Close()
+func (c *Client) sendMessage(message *messages.Message) {
+	err := c.connection.Encode(message)
+	if err != nil {
+		log.Println("Error sending message:", err.Error())
+	}
+}
 
-	log.Println("Connected to server")
+func (c *Client) waitForServerJoin() error {
 	message := &messages.Message{}
 	err := c.connection.Decode(message)
 	if err != nil {
-		fmt.Println("Error decoding message:", err.Error())
-		return
+		return err
 	}
 	if message.Type != messages.ServerJoin {
-		return
+		return fmt.Errorf("expected ServerJoin message, got %d", message.Type)
 	}
 	c.Player = message.Player
-	// TODO :: プレイヤーを作成するタイミングをコネクションを取った時点に変更する
-	// 問題: second playerの挙動がセグフォになっている
+	return nil
+}
 
+func (c *Client) joinOrCreateRoom() {
 	choice := c.ioHandler.askJoinOrCreateRoom()
 
 	switch choice {
 	case CreateRoom:
 		roomName := c.ioHandler.askRoomName()
-		c.sendCreateRoomMessage(roomName)
+		c.CreateRoom(roomName)
 	case JoinRoom:
 		roomList := c.requestRoomList()
 		selectedRoom := c.ioHandler.askRoomSelection(roomList)
-		c.sendJoinRoomMessage(selectedRoom)
+		c.JoinRoom(selectedRoom)
 	}
+}
 
+func (c *Client) handleMessages() {
 	for {
 		message := &messages.Message{}
 		err := c.connection.Decode(message)
@@ -72,48 +78,63 @@ func (c *Client) Run() {
 			fmt.Println("Error decoding message:", err.Error())
 			break
 		}
-
-		switch message.Type {
-
-		case messages.CreateRoom:
-			// c.Player = message.Player
-			log.Println("Room created: ", message.RoomID)
-			// log.Println("Player created: ", c.Player.Name)
-		case messages.JoinRoom:
-			log.Println("Room joined: ", message.Player.Name)
-		case messages.GameJoined:
-			log.Println("Game joined by: ", message.Player.Name)
-			c.Player = message.Player
-			c.setReady()
-		case messages.PlayerJoined:
-			log.Println("Player joined: ", message.Player.Name)
-		case messages.PlayerLeft:
-			log.Println("Player left: ", message.Player.Name)
-		case messages.GameStarted:
-			log.Println("Game started")
-			if c.Player.Name == message.Player.Name {
-				message := &messages.Message{
-					Type:   messages.TurnStarted,
-					RoomID: message.RoomID,
-				}
-				c.connection.Encode(message)
-			}
-		case messages.UpdateScorecard:
-			c.handleUpdateScorecard(message)
-		case messages.TurnStarted:
-			c.handleTurnStarted(message)
-		case messages.DiceRolled:
-			c.handleDiceRolled(message)
-		case messages.GameOver:
-			log.Println("Game over")
-			// TODO - display winner
-		default:
-			fmt.Println("Unknown message type:", message.Type)
-		}
+		c.processMessage(message)
 	}
 }
 
-func (c *Client) sendCreateRoomMessage(roomName string) {
+func (c *Client) processMessage(message *messages.Message) {
+	switch message.Type {
+	case messages.CreateRoom:
+		// c.Player = message.Player
+		log.Println("Room created: ", message.RoomID)
+		// log.Println("Player created: ", c.Player.Name)
+	case messages.JoinRoom:
+		log.Println("Room joined: ", message.Player.Name)
+	case messages.GameJoined:
+		log.Println("Game joined by: ", message.Player.Name)
+		c.Player = message.Player
+		c.setReady()
+	case messages.PlayerJoined:
+		log.Println("Player joined: ", message.Player.Name)
+	case messages.PlayerLeft:
+		log.Println("Player left: ", message.Player.Name)
+	case messages.GameStarted:
+		log.Println("Game started")
+		if c.Player.Name == message.Player.Name {
+			message := &messages.Message{
+				Type:   messages.TurnStarted,
+				RoomID: message.RoomID,
+			}
+			c.connection.Encode(message)
+		}
+	case messages.UpdateScorecard:
+		c.handleUpdateScorecard(message)
+	case messages.TurnStarted:
+		c.handleTurnStarted(message.RoomID)
+	case messages.DiceRolled:
+		c.handleDiceRolled(message)
+	case messages.GameOver:
+		log.Println("Game over")
+		// TODO - display winner
+	default:
+		fmt.Println("Unknown message type:", message.Type)
+	}
+}
+
+func (c *Client) Run() {
+	defer c.connection.Close()
+	log.Println("Connected to server")
+
+	if err := c.waitForServerJoin(); err != nil {
+		fmt.Println("Error waiting for server join:", err.Error())
+		return
+	}
+
+	c.joinOrCreateRoom()
+	c.handleMessages()
+}
+
+func (c *Client) CreateRoom(roomName string) {
 	message := messages.Message{
 		Type:   messages.CreateRoom,
 		RoomID: roomName, // ignored by server
@@ -125,7 +146,7 @@ func (c *Client) requestRoomList() []string {
 	message := messages.Message{
 		Type: messages.ListRooms,
 	}
-	c.connection.Encode(&message)
+	c.sendMessage(&message)
 
 	response := &messages.Message{}
 	c.connection.Decode(response)
@@ -133,19 +154,19 @@ func (c *Client) requestRoomList() []string {
 	return response.RoomList
 }
 
-func (c *Client) sendJoinRoomMessage(roomID string) {
+func (c *Client) JoinRoom(roomID string) {
 	message := messages.Message{
 		Type:   messages.JoinRoom,
 		RoomID: roomID,
 	}
-	c.connection.Encode(&message)
+	c.sendMessage(&message)
 }
 
 func (c *Client) setReady() {
-	readyMessage := messages.Message{
+	message := messages.Message{
 		Type: messages.PlayerReady,
 	}
-	c.connection.Encode(&readyMessage)
+	c.sendMessage(&message)
 }
 
 func (c *Client) handleUpdateScorecard(message *messages.Message) {
@@ -156,14 +177,14 @@ func (c *Client) handleUpdateScorecard(message *messages.Message) {
 	c.ioHandler.DisplayCurrentScoreboard(players)
 }
 
-func (c *Client) handleTurnStarted(message *messages.Message) {
+func (c *Client) handleTurnStarted(roomID string) {
 	log.Println("It's your turn!")
 	c.turnFlag = true
-	hmessage := messages.Message{
+	message := messages.Message{
 		Type:   messages.DiceRolled,
-		RoomID: message.RoomID,
+		RoomID: roomID,
 	}
-	c.connection.Encode(&hmessage)
+	c.sendMessage(&message)
 }
 
 func (c *Client) handleDiceRolled(message *messages.Message) {
@@ -185,7 +206,7 @@ func (c *Client) reRollDice(dice []game.Dice, roomID string) {
 		RoomID: roomID,
 		Dice:   dice,
 	}
-	c.connection.Encode(&message)
+	c.sendMessage(&message)
 }
 
 func (c *Client) chooseCategory(player *game.PlayerInfo, dice []game.Dice, roomID string) {
@@ -196,6 +217,6 @@ func (c *Client) chooseCategory(player *game.PlayerInfo, dice []game.Dice, roomI
 		Player:   player,
 		Category: category,
 	}
-	c.connection.Encode(&message)
+	c.sendMessage(&message)
 	c.turnFlag = false
 }
