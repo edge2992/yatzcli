@@ -8,52 +8,47 @@ import (
 	"yatzcli/network"
 )
 
-type mockIOHandler struct {
-	displayedScoreboards [][]game.PlayerInfo
-	displayedDice        [][]game.Dice
-	getHoldInputCalls    [][]game.Dice
-	chooseCategoryCalls  []struct {
-		player *game.PlayerInfo
-		dice   []game.Dice
+func TestCreateRoom(t *testing.T) {
+	conn := &network.MockConnection{}
+	ioHandler := &MockIOHandler{createOrJoin: CreateRoom}
+	client := NewClient(conn, ioHandler)
+
+	roomName := "TestRoom"
+	client.CreateRoom(roomName)
+
+	if len(conn.EncodedMessages) != 1 {
+		t.Fatalf("Expected 1 encoded messages, got %d", len(conn.EncodedMessages))
+	}
+
+	msg := conn.TopEncodedMessage().(*messages.Message)
+
+	if msg.Type != messages.CreateRoom {
+		t.Fatalf("Expected message type to be CreateRoom, got %d", msg.Type)
 	}
 }
 
-func (m *mockIOHandler) DisplayCurrentScoreboard(players []game.PlayerInfo) {
-	m.displayedScoreboards = append(m.displayedScoreboards, players)
-}
+func TestJoinRoom(t *testing.T) {
+	conn := &network.MockConnection{}
+	ioHandler := &MockIOHandler{createOrJoin: CreateRoom}
+	client := NewClient(conn, ioHandler)
 
-func (m *mockIOHandler) DisplayDice(dice []game.Dice) {
-	m.displayedDice = append(m.displayedDice, dice)
-}
+	roomName := "TestRoom"
+	client.JoinRoom(roomName)
 
-func (m *mockIOHandler) GetPlayerHoldInput(dice []game.Dice) []int {
-	m.getHoldInputCalls = append(m.getHoldInputCalls, dice)
-	return []int{1, 3}
-}
+	if len(conn.EncodedMessages) != 1 {
+		t.Fatalf("Expected 1 encoded messages, got %d", len(conn.EncodedMessages))
+	}
 
-func (m *mockIOHandler) ChooseCategory(player *game.PlayerInfo, dice []game.Dice) game.ScoreCategory {
-	m.chooseCategoryCalls = append(m.chooseCategoryCalls, struct {
-		player *game.PlayerInfo
-		dice   []game.Dice
-	}{player, dice})
-	return game.Ones
-}
+	msg := conn.TopEncodedMessage().(*messages.Message)
 
-func (m *mockIOHandler) askJoinOrCreateRoom() ChoiceType {
-	return JoinRoom
-}
-
-func (m *mockIOHandler) askRoomName() string {
-	return ""
-}
-
-func (m *mockIOHandler) askRoomSelection([]string) string {
-	return ""
+	if msg.Type != messages.JoinRoom {
+		t.Fatalf("Expected message type to be JoinRoom, got %d", msg.Type)
+	}
 }
 
 func TestSetReady(t *testing.T) {
 	conn := &network.MockConnection{}
-	ioHandler := &mockIOHandler{}
+	ioHandler := &MockIOHandler{}
 	client := NewClient(conn, ioHandler)
 
 	client.setReady()
@@ -74,7 +69,7 @@ func TestSetReady(t *testing.T) {
 
 func TestHandleUpdateScorecard(t *testing.T) {
 	conn := &network.MockConnection{}
-	ioHandler := &mockIOHandler{}
+	ioHandler := &MockIOHandler{}
 	client := NewClient(conn, ioHandler)
 
 	player1 := &game.PlayerInfo{Name: "player1"}
@@ -103,14 +98,14 @@ func TestHandleUpdateScorecard(t *testing.T) {
 
 func TestHandleTurnStarted(t *testing.T) {
 	conn := &network.MockConnection{}
-	ioHandler := &mockIOHandler{}
+	ioHandler := &MockIOHandler{}
 	client := NewClient(conn, ioHandler)
 
 	msg := &messages.Message{
 		Type: messages.TurnStarted,
 	}
 
-	client.handleTurnStarted(msg)
+	client.handleTurnStarted(msg.RoomID)
 
 	if !client.turnFlag {
 		t.Fatal("Expected turnFlag to be set to true")
@@ -132,7 +127,7 @@ func TestHandleTurnStarted(t *testing.T) {
 
 func TestHandleDiceRolled(t *testing.T) {
 	conn := &network.MockConnection{}
-	ioHandler := &mockIOHandler{}
+	ioHandler := &MockIOHandler{}
 	client := NewClient(conn, ioHandler)
 
 	dice := []game.Dice{
@@ -186,7 +181,7 @@ func TestHandleDiceRolled(t *testing.T) {
 
 func TestReRollDice(t *testing.T) {
 	conn := &network.MockConnection{}
-	ioHandler := &mockIOHandler{}
+	ioHandler := &MockIOHandler{}
 	client := NewClient(conn, ioHandler)
 
 	dice := []game.Dice{
@@ -197,7 +192,7 @@ func TestReRollDice(t *testing.T) {
 		{Value: 5, Held: false},
 	}
 
-	client.reRollDice(dice)
+	client.reRollDice(dice, "roomID")
 
 	if len(conn.EncodedMessages) != 1 {
 		t.Fatalf("Expected 1 encoded message, got %d", len(conn.EncodedMessages))
@@ -219,7 +214,7 @@ func TestReRollDice(t *testing.T) {
 
 func TestChooseCategory(t *testing.T) {
 	conn := &network.MockConnection{}
-	ioHandler := &mockIOHandler{}
+	ioHandler := &MockIOHandler{}
 	client := NewClient(conn, ioHandler)
 
 	player := &game.PlayerInfo{Name: "player1"}
@@ -231,7 +226,7 @@ func TestChooseCategory(t *testing.T) {
 		{Value: 5, Held: false},
 	}
 
-	client.chooseCategory(player, dice)
+	client.chooseCategory(player, dice, "roomID")
 
 	if len(conn.EncodedMessages) != 1 {
 		t.Fatalf("Expected 1 encoded message, got %d", len(conn.EncodedMessages))
