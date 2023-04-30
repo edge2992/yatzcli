@@ -41,7 +41,7 @@ func (rc *RoomController) CreateRoom(player *Player) {
 	rc.roomManager.JoinRoom(roomID, player)
 
 	message := messages.Message{
-		Type:   messages.CreateRoom,
+		Type:   messages.RoomCreated,
 		Player: player.PlayerInfo(),
 		RoomID: roomID,
 	}
@@ -91,7 +91,7 @@ func (rc *RoomController) addPlayerToRoom(roomID string, player *Player) {
 
 func (rc *RoomController) notifyPlayerJoinedRoomToOthers(room *Room, player *Player) {
 	message := messages.Message{
-		Type:   messages.JoinRoom,
+		Type:   messages.RoomJoined,
 		Player: player.PlayerInfo(),
 		RoomID: room.ID,
 	}
@@ -107,7 +107,7 @@ func (rc *RoomController) ListRooms(player *Player) {
 	}
 
 	message := messages.Message{
-		Type:     messages.ListRoomsResponse,
+		Type:     messages.RoomListResponse,
 		Player:   player.PlayerInfo(),
 		RoomList: roomList,
 	}
@@ -122,7 +122,7 @@ func (rc *RoomController) LeaveRoom(roomID string, player *Player) {
 	}
 
 	message := messages.Message{
-		Type:   messages.LeaveRoom,
+		Type:   messages.RoomLeft,
 		Player: player.PlayerInfo(),
 		RoomID: roomID,
 	}
@@ -138,13 +138,13 @@ func (rc *RoomController) LeaveRoom(roomID string, player *Player) {
 
 func (rc *RoomController) HandleMessage(message *messages.Message, player *Player) {
 	switch message.Type {
-	case messages.CreateRoom:
+	case messages.RequestCreateRoom:
 		rc.CreateRoom(player)
-	case messages.JoinRoom:
+	case messages.RequestJoinRoom:
 		rc.JoinRoom(message.RoomID, player)
-	case messages.ListRooms:
+	case messages.RequestRoomList:
 		rc.ListRooms(player)
-	case messages.LeaveRoom:
+	case messages.RequestLeaveRoom:
 		rc.LeaveRoom(message.RoomID, player)
 	}
 }

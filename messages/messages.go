@@ -5,31 +5,31 @@ import "yatzcli/game"
 type MessageType int
 
 const (
-	GameJoined MessageType = iota
-	GameLeft
-	GameStart
-	GameStarted
-	PlayerReady
-	PlayerJoined
-	PlayerJoinedRoom
-	PlayerLeft
-	DiceRolled
-	RerollDice
-	TurnStarted
-	TurnPlayed
-	ChooseCategory
-	UpdateScorecard
-	RollDice
-	UpdateGameState
-	GameOver
-	CreateRoom
-	JoinRoom
-	LeaveRoom
-	ListRooms
-	ListRoomsResponse
+	ServerJoin MessageType = iota
 	WaitForPlayers
 	RoomFull
-	ServerJoin
+	RoomCreated
+	RoomJoined
+	RoomLeft
+	GamePlayerJoined
+	GamePlayerLeft
+	GameStart
+	GameStarted
+	GameOver
+	PlayerLeft
+	DiceRolled
+	TurnStarted
+	TurnPlayed
+	UpdateScorecard
+	UpdateGameState
+	RequestRollDice
+	RequestRerollDice
+	RequestChooseCategory
+	RequestCreateRoom
+	RequestJoinRoom
+	RequestLeaveRoom
+	RequestRoomList
+	RoomListResponse
 )
 
 type Message struct {

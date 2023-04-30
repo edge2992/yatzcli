@@ -22,7 +22,7 @@ func TestCreateRoom(t *testing.T) {
 
 	msg := conn.TopEncodedMessage().(*messages.Message)
 
-	if msg.Type != messages.CreateRoom {
+	if msg.Type != messages.RequestCreateRoom {
 		t.Fatalf("Expected message type to be CreateRoom, got %d", msg.Type)
 	}
 }
@@ -41,7 +41,7 @@ func TestJoinRoom(t *testing.T) {
 
 	msg := conn.TopEncodedMessage().(*messages.Message)
 
-	if msg.Type != messages.JoinRoom {
+	if msg.Type != messages.RequestJoinRoom {
 		t.Fatalf("Expected message type to be JoinRoom, got %d", msg.Type)
 	}
 }
@@ -99,7 +99,7 @@ func TestHandleTurnStarted(t *testing.T) {
 		t.Fatal("Expected messages.Message type")
 	}
 
-	if msg.Type != messages.DiceRolled {
+	if msg.Type != messages.RequestRollDice {
 		t.Fatalf("Expected message type to be DiceRolled, got %d", msg.Type)
 	}
 }
@@ -144,7 +144,7 @@ func TestHandleDiceRolled(t *testing.T) {
 		t.Fatal("Expected messages.Message type")
 	}
 
-	if msg.Type != messages.RerollDice {
+	if msg.Type != messages.RequestRerollDice {
 		t.Fatalf("Expected message type to be RerollDice, got %d", msg.Type)
 	}
 
@@ -182,7 +182,7 @@ func TestReRollDice(t *testing.T) {
 		t.Fatal("Expected messages.Message type")
 	}
 
-	if msg.Type != messages.RerollDice {
+	if msg.Type != messages.RequestRerollDice {
 		t.Fatalf("Expected message type to be RerollDice, got %d", msg.Type)
 	}
 
@@ -216,7 +216,7 @@ func TestChooseCategory(t *testing.T) {
 		t.Fatal("Expected messages.Message type")
 	}
 
-	if msg.Type != messages.ChooseCategory {
+	if msg.Type != messages.RequestChooseCategory {
 		t.Fatalf("Expected message type to be ChooseCategory, got %d", msg.Type)
 	}
 

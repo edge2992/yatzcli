@@ -88,9 +88,9 @@ func (c *Client) handleMessages() {
 
 func (c *Client) processMessage(message *messages.Message) {
 	switch message.Type {
-	case messages.CreateRoom:
+	case messages.RoomCreated:
 		c.handleCreateRoomMessage(message)
-	case messages.JoinRoom:
+	case messages.RoomJoined:
 		c.handleJoinRoomMessage(message)
 	case messages.PlayerLeft:
 		c.handleLeaveRoomMessage(message)
@@ -124,7 +124,7 @@ func (c *Client) Run() {
 
 func (c *Client) CreateRoom(roomName string) {
 	message := messages.Message{
-		Type:   messages.CreateRoom,
+		Type:   messages.RequestCreateRoom,
 		RoomID: roomName, // ignored by server
 	}
 	c.connection.Encode(&message)
@@ -132,7 +132,7 @@ func (c *Client) CreateRoom(roomName string) {
 
 func (c *Client) requestRoomList() []string {
 	message := messages.Message{
-		Type: messages.ListRooms,
+		Type: messages.RequestRoomList,
 	}
 	c.sendMessage(&message)
 
@@ -144,7 +144,7 @@ func (c *Client) requestRoomList() []string {
 
 func (c *Client) JoinRoom(roomID string) {
 	message := messages.Message{
-		Type:   messages.JoinRoom,
+		Type:   messages.RequestJoinRoom,
 		RoomID: roomID,
 	}
 	c.sendMessage(&message)
@@ -190,7 +190,7 @@ func (c *Client) handleTurnStarted(roomID string) {
 	log.Println("It's your turn!")
 	c.turnFlag = true
 	message := messages.Message{
-		Type:   messages.DiceRolled,
+		Type:   messages.RequestRollDice,
 		RoomID: roomID,
 	}
 	c.sendMessage(&message)
@@ -211,7 +211,7 @@ func (c *Client) reRollDice(dice []game.Dice, roomID string) {
 	selectedIndices := c.ioHandler.GetPlayerHoldInput(dice)
 	game.HoldDice(dice, selectedIndices)
 	message := messages.Message{
-		Type:   messages.RerollDice,
+		Type:   messages.RequestRerollDice,
 		RoomID: roomID,
 		Dice:   dice,
 	}
@@ -221,7 +221,7 @@ func (c *Client) reRollDice(dice []game.Dice, roomID string) {
 func (c *Client) chooseCategory(player *game.PlayerInfo, dice []game.Dice, roomID string) {
 	category := c.ioHandler.ChooseCategory(player, dice)
 	message := messages.Message{
-		Type:     messages.ChooseCategory,
+		Type:     messages.RequestChooseCategory,
 		RoomID:   roomID,
 		Player:   player,
 		Category: category,

@@ -48,7 +48,7 @@ func TestRoomController_CreateRoom(t *testing.T) {
 	}
 
 	msg := mockConn.EncodedMessages[0].(*messages.Message)
-	if msg.Type != messages.CreateRoom {
+	if msg.Type != messages.RoomCreated {
 		t.Error("Expected message to be CreateRoom")
 	}
 
@@ -105,7 +105,7 @@ func TestRoomController_ListRooms(t *testing.T) {
 		t.Fatalf("Expected message, got %T", mockConn.EncodedMessages[0])
 	}
 
-	if message.Type != messages.ListRoomsResponse {
+	if message.Type != messages.RoomListResponse {
 		t.Errorf("Expected message type ListRoomsResponse, got %d", message.Type)
 	}
 
@@ -150,7 +150,7 @@ func TestRoomController_LeaveRoom(t *testing.T) {
 
 	msg := mockConn.TopEncodedMessage().(*messages.Message)
 
-	if msg.Type != messages.LeaveRoom {
+	if msg.Type != messages.RoomLeft {
 		t.Error("Expected message to be LeaveRoom")
 	}
 
