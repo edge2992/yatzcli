@@ -104,6 +104,8 @@ func (c *Client) processMessage(message *messages.Message) {
 		c.handleDiceRolled(message)
 	case messages.GameOver:
 		c.handleGameOverMessage(message)
+	case messages.Error:
+		c.handleErrorMessage(message)
 	default:
 		fmt.Println("Unknown message type:", message.Type)
 	}
@@ -180,6 +182,11 @@ func (c *Client) handleGameOverMessage(message *messages.Message) {
 		players = append(players, *player)
 	}
 	c.ioHandler.DisplayGameOver(players)
+}
+
+func (c *Client) handleErrorMessage(message *messages.Message) {
+	log.Printf("Error from server: %s", message.ErrorMessage)
+	fmt.Printf("\n⚠️  Error: %s\n\n", message.ErrorMessage)
 }
 
 func (c *Client) handleUpdateScorecard(message *messages.Message) {

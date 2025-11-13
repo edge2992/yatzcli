@@ -30,6 +30,7 @@ const (
 	WaitForPlayers
 	RoomFull
 	ServerJoin
+	Error
 )
 
 type Message struct {
@@ -42,4 +43,5 @@ type Message struct {
 	Category      game.ScoreCategory
 	RoomID        string
 	RoomList      []string
+	ErrorMessage  string
 }
