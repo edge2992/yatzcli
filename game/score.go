@@ -25,18 +25,28 @@ func calculateUpperSection(number int) ScoreCalculator {
 }
 
 func calculateThreeOfAKind(diceCounts []int) int {
-	for i, count := range diceCounts {
+	for _, count := range diceCounts {
 		if count >= 3 {
-			return (i + 1) * 3
+			// Return sum of all dice
+			total := 0
+			for i, c := range diceCounts {
+				total += (i + 1) * c
+			}
+			return total
 		}
 	}
 	return 0
 }
 
 func calculateFourOfAKind(diceCounts []int) int {
-	for i, count := range diceCounts {
+	for _, count := range diceCounts {
 		if count >= 4 {
-			return (i + 1) * 4
+			// Return sum of all dice
+			total := 0
+			for i, c := range diceCounts {
+				total += (i + 1) * c
+			}
+			return total
 		}
 	}
 	return 0
