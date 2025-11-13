@@ -123,8 +123,30 @@ func countDiceValues(dice []Dice) []int {
 
 func CalculateTotalScore(scoreCard ScoreCard) int {
 	total := 0
-	for _, score := range scoreCard.Scores {
-		total += score
+
+	// Calculate Upper Section total
+	upperSectionTotal := 0
+	upperSectionCategories := []ScoreCategory{Ones, Twos, Threes, Fours, Fives, Sixes}
+	for _, category := range upperSectionCategories {
+		upperSectionTotal += scoreCard.Scores[category]
 	}
+
+	// Add Upper Section bonus if >= 63
+	const upperSectionBonusThreshold = 63
+	const upperSectionBonus = 35
+	total += upperSectionTotal
+	if upperSectionTotal >= upperSectionBonusThreshold {
+		total += upperSectionBonus
+	}
+
+	// Add Lower Section scores
+	lowerSectionCategories := []ScoreCategory{
+		ThreeOfAKind, FourOfAKind, FullHouse,
+		SmallStraight, LargeStraight, Yahtzee, Chance,
+	}
+	for _, category := range lowerSectionCategories {
+		total += scoreCard.Scores[category]
+	}
+
 	return total
 }
