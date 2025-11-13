@@ -116,7 +116,10 @@ func (gpc *GamePlayController) RerollDice(roomID string, player *Player, dice []
 			RoomID:       roomID,
 			ErrorMessage: errorMsg,
 		}
-		player.Connection.SendMessage(&message)
+		err := player.Connection.Encode(&message)
+		if err != nil {
+			log.Println("Error encoding error message:", err.Error())
+		}
 		return
 	}
 	// rough implementation of rerolling dice
