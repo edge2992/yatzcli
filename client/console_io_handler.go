@@ -98,6 +98,50 @@ func (c *ConsoleIOHandler) DisplayDice(dice []game.Dice) {
 	fmt.Println()
 }
 
+func (c *ConsoleIOHandler) DisplayGameOver(players []game.PlayerInfo) {
+	fmt.Println("\n" + strings.Repeat("=", 50))
+	color.Set(color.FgYellow, color.Bold)
+	fmt.Println("GAME OVER!")
+	color.Unset()
+	fmt.Println(strings.Repeat("=", 50))
+
+	// Display final scoreboard
+	c.DisplayCurrentScoreboard(players)
+
+	// Find winner(s)
+	maxScore := 0
+	winners := []game.PlayerInfo{}
+	for _, player := range players {
+		score := game.CalculateTotalScore(player.ScoreCard)
+		if score > maxScore {
+			maxScore = score
+			winners = []game.PlayerInfo{player}
+		} else if score == maxScore {
+			winners = append(winners, player)
+		}
+	}
+
+	// Display winner(s)
+	fmt.Println()
+	if len(winners) == 1 {
+		color.Set(color.FgGreen, color.Bold)
+		fmt.Printf("🏆 Winner: %s with %d points! 🏆\n", winners[0].Name, maxScore)
+		color.Unset()
+	} else {
+		color.Set(color.FgCyan, color.Bold)
+		fmt.Printf("🏆 It's a tie! ")
+		for i, winner := range winners {
+			if i > 0 {
+				fmt.Print(" and ")
+			}
+			fmt.Print(winner.Name)
+		}
+		fmt.Printf(" with %d points! 🏆\n", maxScore)
+		color.Unset()
+	}
+	fmt.Println(strings.Repeat("=", 50))
+}
+
 func (c *ConsoleIOHandler) askJoinOrCreateRoom() ChoiceType {
 	var joinOrCreate string
 	prompt := &survey.Select{

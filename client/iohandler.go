@@ -14,6 +14,7 @@ type IOHandler interface {
 	ChooseCategory(*game.PlayerInfo, []game.Dice) game.ScoreCategory
 	DisplayCurrentScoreboard([]game.PlayerInfo)
 	DisplayDice([]game.Dice)
+	DisplayGameOver([]game.PlayerInfo)
 	askJoinOrCreateRoom() ChoiceType
 	askRoomName() string
 	askRoomSelection([]string) string

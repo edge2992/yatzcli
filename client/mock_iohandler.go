@@ -21,6 +21,11 @@ func (m *MockIOHandler) DisplayDice(dice []game.Dice) {
 	m.displayedDice = append(m.displayedDice, dice)
 }
 
+func (m *MockIOHandler) DisplayGameOver(players []game.PlayerInfo) {
+	// Mock implementation - just store for testing
+	m.displayedScoreboards = append(m.displayedScoreboards, players)
+}
+
 func (m *MockIOHandler) GetPlayerHoldInput(dice []game.Dice) []int {
 	m.getHoldInputCalls = append(m.getHoldInputCalls, dice)
 	return []int{1, 3}

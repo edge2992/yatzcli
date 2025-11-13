@@ -25,18 +25,28 @@ func calculateUpperSection(number int) ScoreCalculator {
 }
 
 func calculateThreeOfAKind(diceCounts []int) int {
-	for i, count := range diceCounts {
+	for _, count := range diceCounts {
 		if count >= 3 {
-			return (i + 1) * 3
+			// Return sum of all dice
+			total := 0
+			for i, c := range diceCounts {
+				total += (i + 1) * c
+			}
+			return total
 		}
 	}
 	return 0
 }
 
 func calculateFourOfAKind(diceCounts []int) int {
-	for i, count := range diceCounts {
+	for _, count := range diceCounts {
 		if count >= 4 {
-			return (i + 1) * 4
+			// Return sum of all dice
+			total := 0
+			for i, c := range diceCounts {
+				total += (i + 1) * c
+			}
+			return total
 		}
 	}
 	return 0
@@ -113,8 +123,30 @@ func countDiceValues(dice []Dice) []int {
 
 func CalculateTotalScore(scoreCard ScoreCard) int {
 	total := 0
-	for _, score := range scoreCard.Scores {
-		total += score
+
+	// Calculate Upper Section total
+	upperSectionTotal := 0
+	upperSectionCategories := []ScoreCategory{Ones, Twos, Threes, Fours, Fives, Sixes}
+	for _, category := range upperSectionCategories {
+		upperSectionTotal += scoreCard.Scores[category]
 	}
+
+	// Add Upper Section bonus if >= 63
+	const upperSectionBonusThreshold = 63
+	const upperSectionBonus = 35
+	total += upperSectionTotal
+	if upperSectionTotal >= upperSectionBonusThreshold {
+		total += upperSectionBonus
+	}
+
+	// Add Lower Section scores
+	lowerSectionCategories := []ScoreCategory{
+		ThreeOfAKind, FourOfAKind, FullHouse,
+		SmallStraight, LargeStraight, Yahtzee, Chance,
+	}
+	for _, category := range lowerSectionCategories {
+		total += scoreCard.Scores[category]
+	}
+
 	return total
 }
