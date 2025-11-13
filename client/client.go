@@ -175,7 +175,11 @@ func (c *Client) handleGameStartedMessage(message *messages.Message) {
 
 func (c *Client) handleGameOverMessage(message *messages.Message) {
 	log.Println("Game over")
-	// TODO - display winner
+	players := make([]game.PlayerInfo, 0)
+	for _, player := range message.Players {
+		players = append(players, *player)
+	}
+	c.ioHandler.DisplayGameOver(players)
 }
 
 func (c *Client) handleUpdateScorecard(message *messages.Message) {
