@@ -108,9 +108,9 @@ func (gpc *GamePlayController) RerollDice(roomID string, player *Player, dice []
 		log.Println("Error getting room:", err.Error())
 		return
 	}
-	if room.diceRolls >= game.NumberOfDice {
+	if room.diceRolls >= game.MaxRolls {
 		// TODO: Send error message
-		log.Println("Cannot reroll dice more than", game.NumberOfDice, "times")
+		log.Println("Cannot reroll dice more than", game.MaxRolls, "times")
 		return
 	}
 	// rough implementation of rerolling dice
