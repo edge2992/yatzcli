@@ -2,10 +2,13 @@ package server
 
 import (
 	"math/rand"
+	"sync"
 	"yatzcli/game"
 )
 
 type Room struct {
+	mu sync.RWMutex // 並行アクセス制御用
+
 	ID              string
 	Players         []*Player
 	dices           []game.Dice
@@ -24,11 +27,17 @@ func NewRoom(roomID string) *Room {
 }
 
 func (room *Room) AddPlayer(player *Player) error {
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
 	room.Players = append(room.Players, player)
 	return nil
 }
 
 func (room *Room) RemovePlayer(player *Player) error {
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
 	for i, p := range room.Players {
 		if p == player {
 			room.Players = append(room.Players[:i], room.Players[i+1:]...)
@@ -39,6 +48,9 @@ func (room *Room) RemovePlayer(player *Player) error {
 }
 
 func (room *Room) StartGame(started_randomly bool) {
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
 	room.gameStarted = true
 
 	room.currentPlayerId = 0
@@ -48,5 +60,8 @@ func (room *Room) StartGame(started_randomly bool) {
 }
 
 func (room *Room) GetCurrentPlayer() *Player {
+	room.mu.RLock()
+	defer room.mu.RUnlock()
+
 	return room.Players[room.currentPlayerId]
 }
