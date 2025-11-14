@@ -5,32 +5,40 @@ import "yatzcli/game"
 type MessageType int
 
 const (
-	GameJoined MessageType = iota
-	GameLeft
-	GameStart
-	GameStarted
-	PlayerReady
-	PlayerJoined
-	PlayerJoinedRoom
+	// Game lifecycle events
+	GameStarted MessageType = iota
+	GameOver
+
+	// Player events
 	PlayerLeft
-	DiceRolled
-	RerollDice
+
+	// Turn events
 	TurnStarted
-	TurnPlayed
+	DiceRolled
+
+	// Actions
+	RerollDice
 	ChooseCategory
 	UpdateScorecard
-	RollDice
-	UpdateGameState
-	GameOver
+
+	// Room management
 	CreateRoom
 	JoinRoom
 	LeaveRoom
 	ListRooms
 	ListRoomsResponse
-	WaitForPlayers
-	RoomFull
+
+	// System
 	ServerJoin
 	Error
+
+	// Removed unused types (2025-11-14):
+	// - GameJoined, GameLeft, GameStart: Unused game lifecycle events
+	// - PlayerReady, PlayerJoined, PlayerJoinedRoom: Unused player events
+	// - TurnPlayed: Unused turn event
+	// - RollDice: Duplicate of RerollDice
+	// - UpdateGameState: Unused game state update
+	// - WaitForPlayers, RoomFull: Unused room states
 )
 
 type Message struct {
