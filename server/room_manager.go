@@ -1,8 +1,9 @@
 package server
 
 import (
-	"errors"
 	"sync"
+
+	domainerror "yatzcli/internal/domain/error"
 )
 
 type RoomManager struct {
@@ -21,7 +22,7 @@ func (rm *RoomManager) CreateRoom(roomID string) (*Room, error) {
 	defer rm.mutex.Unlock()
 
 	if _, exists := rm.rooms[roomID]; exists {
-		return nil, errors.New("Room already exists")
+		return nil, domainerror.ErrRoomFull // RoomIDが既に存在する場合
 	}
 	newRoom := NewRoom(roomID)
 	rm.rooms[roomID] = newRoom
@@ -41,7 +42,7 @@ func (rm *RoomManager) JoinRoom(roomID string, player *Player) (*Room, error) {
 
 	room, exists := rm.rooms[roomID]
 	if !exists {
-		return nil, errors.New("Room does not exist")
+		return nil, domainerror.ErrRoomNotFound
 	}
 
 	if err := room.AddPlayer(player); err != nil {
@@ -76,7 +77,7 @@ func (rm *RoomManager) GetRoom(roomID string) (*Room, error) {
 
 	room, exists := rm.rooms[roomID]
 	if !exists {
-		return nil, errors.New("Room does not exist")
+		return nil, domainerror.ErrRoomNotFound
 	}
 	return room, nil
 }
