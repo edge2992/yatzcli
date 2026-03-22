@@ -265,6 +265,42 @@ func TestGetScorecardInvalidPlayer(t *testing.T) {
 	}
 }
 
+func TestSendChatBeforeJoin(t *testing.T) {
+	c := setupClient(t)
+
+	// send_chat without join_game should error
+	result := callTool(t, c, "send_chat", map[string]interface{}{
+		"text": "hello",
+	})
+	text := getText(t, result)
+
+	if !result.IsError {
+		t.Error("expected error for send_chat before join_game")
+	}
+	if !contains(text, "Not connected to a game server") {
+		t.Errorf("expected connection error, got: %s", text)
+	}
+}
+
+func TestSendChatAfterNewGame(t *testing.T) {
+	c := setupClient(t)
+
+	// Start a local game, then try send_chat — should error because it's not an online game
+	callTool(t, c, "new_game", map[string]interface{}{"opponents": 1.0})
+
+	result := callTool(t, c, "send_chat", map[string]interface{}{
+		"text": "hello",
+	})
+	text := getText(t, result)
+
+	if !result.IsError {
+		t.Error("expected error for send_chat in local game")
+	}
+	if !contains(text, "Not connected to a game server") {
+		t.Errorf("expected connection error, got: %s", text)
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && containsStr(s, substr)
 }
