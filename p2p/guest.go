@@ -33,6 +33,8 @@ type RemoteClient struct {
 	turnCh chan *engine.GameState
 	// gameOverCh delivers game_over state.
 	gameOverCh chan *engine.GameState
+	// chatCh delivers chat messages from the host.
+	chatCh chan *ChatPayload
 	// listenErr holds any fatal error from the listener.
 	listenErr error
 	listenMu  sync.Mutex
@@ -73,6 +75,14 @@ func newRemoteClientFromConn(conn net.Conn, name string) (*RemoteClient, error) 
 	if msg.Type != MsgHandshake {
 		return nil, fmt.Errorf("expected handshake, got %s", msg.Type)
 	}
+	hs, err := DecodeHandshake(msg)
+	if err != nil {
+		return nil, fmt.Errorf("decode handshake: %w", err)
+	}
+	playerID := hs.PlayerID
+	if playerID == "" {
+		playerID = "player-1" // backward compat with old host
+	}
 
 	// Wait for game_start
 	msg, err = ReadMessage(conn)
@@ -90,11 +100,12 @@ func newRemoteClientFromConn(conn net.Conn, name string) (*RemoteClient, error) 
 	rc := &RemoteClient{
 		conn:       conn,
 		lastState:  &sp.State,
-		playerID:   "player-1",
+		playerID:   playerID,
 		playerName: name,
 		responseCh: make(chan responseResult, 1),
 		turnCh:     make(chan *engine.GameState, 1),
 		gameOverCh: make(chan *engine.GameState, 1),
+		chatCh:     make(chan *ChatPayload, 16),
 	}
 
 	go rc.listen()
@@ -167,6 +178,16 @@ func (rc *RemoteClient) listen() {
 			}
 			rc.setLastState(&sp.State)
 			rc.turnCh <- &sp.State
+
+		case MsgChat:
+			cp, err := DecodeChat(msg)
+			if err != nil {
+				continue
+			}
+			select {
+			case rc.chatCh <- cp:
+			default: // drop if buffer full
+			}
 
 		case MsgGameOver:
 			sp, err := DecodeState(msg)
@@ -269,6 +290,20 @@ func (rc *RemoteClient) WaitForTurn() (*engine.GameState, bool, error) {
 	case state := <-rc.gameOverCh:
 		return state, true, nil
 	}
+}
+
+func (rc *RemoteClient) ChatCh() <-chan *ChatPayload {
+	return rc.chatCh
+}
+
+func (rc *RemoteClient) SendChat(playerID, name, text string) error {
+	rc.writeMu.Lock()
+	defer rc.writeMu.Unlock()
+	return WriteMessage(rc.conn, NewChatMsg(playerID, name, text))
+}
+
+func (rc *RemoteClient) PlayerID() string {
+	return rc.playerID
 }
 
 func (rc *RemoteClient) Close() error {
