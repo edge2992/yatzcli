@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.12
 	github.com/aws/aws-sdk-go-v2/service/apigatewaymanagementapi v1.29.13
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.57.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/mark3labs/mcp-go v0.45.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
