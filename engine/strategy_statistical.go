@@ -40,7 +40,12 @@ func (s *StatisticalStrategy) DecideAction(dice [5]int, rollCount int, scorecard
 	return TurnAction{Type: "score", Category: immediateBest}
 }
 
+// bestCategoryForDice returns the highest-scoring available category.
+// Panics if available is empty; callers must ensure at least one category.
 func bestCategoryForDice(dice [5]int, available []Category) Category {
+	if len(available) == 0 {
+		return Chance
+	}
 	bestCat := available[0]
 	bestScore := CalcScore(bestCat, dice)
 	for _, c := range available[1:] {

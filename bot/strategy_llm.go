@@ -189,6 +189,9 @@ func (s *LLMStrategy) parseResponse(text string, available []engine.Category) (e
 
 	switch resp.Action {
 	case "hold":
+		if len(resp.Indices) == 0 {
+			return engine.TurnAction{}, fmt.Errorf("hold action with empty indices")
+		}
 		for _, idx := range resp.Indices {
 			if idx < 0 || idx > 4 {
 				return engine.TurnAction{}, fmt.Errorf("invalid hold index: %d", idx)
