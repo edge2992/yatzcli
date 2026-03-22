@@ -44,6 +44,7 @@ type model struct {
 	cursor     int
 	lastState      *engine.GameState
 	err            string
+	opponentStatus string
 	chatMessages   []ChatEntry
 	chatCh         <-chan ChatEntry
 	stateUpdateCh  <-chan *engine.GameState
@@ -115,10 +116,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.lastState = msg.state
 		if msg.state.Phase == engine.PhaseFinished {
 			m.state = stateGameOver
+			m.opponentStatus = ""
 		} else if m.state == stateWaiting && msg.state.CurrentPlayer == m.playerID {
 			// Our turn now
 			m.state = stateRolling
 			m.held = [5]bool{}
+			m.opponentStatus = ""
+		} else if m.state == stateWaiting {
+			// Opponent is playing — show what they're doing
+			switch {
+			case msg.state.RollCount == 0:
+				m.opponentStatus = "考え中..."
+			case msg.state.Phase == engine.PhaseChoosing:
+				m.opponentStatus = fmt.Sprintf("ダイス確定 [%s] → カテゴリ選択中...", formatDiceCompact(msg.state.Dice))
+			default:
+				m.opponentStatus = fmt.Sprintf("ロール %d/%d [%s]", msg.state.RollCount, engine.MaxRolls, formatDiceCompact(msg.state.Dice))
+			}
 		}
 		if m.stateUpdateCh != nil {
 			return m, listenForStateUpdate(m.stateUpdateCh)
@@ -326,6 +339,9 @@ func (m model) viewWaiting(b *strings.Builder) {
 		}
 	}
 	b.WriteString(fmt.Sprintf("  Round %d/13  |  %s のターンを待っています...\n\n", gs.Round, opponent))
+	if m.opponentStatus != "" {
+		b.WriteString(fmt.Sprintf("  ▶ %s\n\n", m.opponentStatus))
+	}
 	m.viewDice(b)
 	b.WriteString("\n")
 	m.viewScorecard(b)
@@ -462,4 +478,8 @@ func categoryName(c engine.Category) string {
 		return name
 	}
 	return string(c)
+}
+
+func formatDiceCompact(dice [5]int) string {
+	return fmt.Sprintf("%d %d %d %d %d", dice[0], dice[1], dice[2], dice[3], dice[4])
 }
