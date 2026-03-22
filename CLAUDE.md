@@ -12,6 +12,11 @@ make test-all          # All tests with verbose output
 make test-coverage     # Unit tests with coverage report
 make build             # Build binary
 make lint              # Static analysis (go vet)
+
+# AI Battle
+yatz battle                                    # Greedy vs Statistical (default)
+yatz battle --players "A:llm:personas/aggressive.md,D:llm:personas/defensive.md"
+yatz battle --rounds 100 --quiet               # 100-game statistics
 ```
 
 ## Testing Workflow
@@ -27,14 +32,15 @@ make lint              # Static analysis (go vet)
 ## Project Structure
 
 ```
-cmd/yatz/   Entry point (cobra subcommands: play, mcp, host, join, match)
-engine/     Pure game logic (state machine, scoring, dice, AI, GameClient interface)
-cli/        Interactive TUI (bubbletea v2)
+cmd/yatz/   Entry point (cobra subcommands: play, mcp, host, join, match, battle)
+engine/     Pure game logic (state machine, scoring, dice, AI, Strategy, Battle, GameClient interface)
+cli/        Interactive TUI (bubbletea v2) + AI battle spectator
 mcp/        MCP server for LLM integration (mcp-go, stdio transport)
 p2p/        P2P host-authority online play (length-prefixed JSON over TCP)
 match/      Matchmaking WebSocket client
 lambda/     Serverless matchmaking handler (AWS Lambda + API Gateway + DynamoDB)
-bot/        LLM bot integration (MCP config, system prompt, Claude API interaction)
+bot/        LLM bot integration (MCP config, system prompt, Claude API, LLM Strategy)
+personas/   Markdown-based AI persona definitions for LLM Strategy
 ```
 
 ## Key Design Decisions
@@ -45,6 +51,9 @@ bot/        LLM bot integration (MCP config, system prompt, Claude API interacti
 - **Host-authority model**: Host runs the game engine; guest sends actions over TCP and receives state updates.
 - **AI auto-play**: `LocalClient.Score()` triggers AI turns automatically via `runAITurns()`.
 - **Scorecard**: `map[Category]*int` where `nil` = unfilled, `*0` = filled with zero.
+- **Strategy pattern** (`engine/strategy.go`): `Strategy` interface abstracts AI decision-making. Implementations: `GreedyStrategy` (immediate best score), `StatisticalStrategy` (expected value), `LLMStrategy` (Claude API via `anthropic-sdk-go`).
+- **Battle engine** (`engine/battle.go`): `RunBattle()` drives AI-vs-AI games. `OnTurnDone` callback streams results to TUI spectator.
+- **LLM API Key**: `LLMStrategy` calls Claude API directly (not via MCP) for speed. Uses `--api-key` flag or `ANTHROPIC_API_KEY` env var.
 
 ## Dependencies
 
@@ -53,4 +62,5 @@ bot/        LLM bot integration (MCP config, system prompt, Claude API interacti
 - `mark3labs/mcp-go` — MCP server
 - `gorilla/websocket` — matchmaking client
 - `aws-lambda-go`, `aws-sdk-go-v2` — serverless matchmaking
+- `anthropic-sdk-go` — Claude API client for LLM Strategy
 - `stretchr/testify` — test assertions
