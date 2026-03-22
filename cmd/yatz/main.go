@@ -8,6 +8,7 @@ import (
 
 	"github.com/edge2992/yatzcli/cli"
 	"github.com/edge2992/yatzcli/engine"
+	mcpserver "github.com/edge2992/yatzcli/mcp"
 )
 
 var rootCmd = &cobra.Command{
@@ -39,10 +40,19 @@ var playCmd = &cobra.Command{
 	},
 }
 
+var mcpCmd = &cobra.Command{
+	Use:   "mcp",
+	Short: "Start MCP server for LLM integration",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return mcpserver.Serve()
+	},
+}
+
 func init() {
 	playCmd.Flags().IntP("opponents", "o", 1, "Number of AI opponents (1-3)")
 	playCmd.Flags().StringP("name", "n", "Player", "Your player name")
 	rootCmd.AddCommand(playCmd)
+	rootCmd.AddCommand(mcpCmd)
 }
 
 func main() {
