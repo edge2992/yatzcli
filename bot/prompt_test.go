@@ -35,7 +35,7 @@ func TestBuildPrompt(t *testing.T) {
 	assert.Contains(t, prompt, "score")
 	assert.Contains(t, prompt, "send_chat")
 	// Critical: instruction not to call wait_for_turn after score
-	assert.Contains(t, prompt, "score した後は wait_for_turn を呼んではいけない")
+	assert.Contains(t, prompt, "score 後に wait_for_turn を呼ぶな")
 }
 
 func TestBuildSystemPrompt(t *testing.T) {

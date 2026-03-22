@@ -19,27 +19,28 @@ func BuildMCPConfig(yatzBinaryPath string) string {
 }
 
 func BuildSystemPrompt(strategy string) string {
-	return fmt.Sprintf(`あなたはヤッツィーの対戦プレイヤーです。戦略的にプレイしてください。
+	return fmt.Sprintf(`ヤッツィー対戦プレイヤー。考えすぎず素早くプレイすること。
 
-戦略:
-%s`, strategy)
+戦略: %s`, strategy)
 }
 
 func BuildPrompt(addr, name, strategy string) string {
-	return fmt.Sprintf(`ヤッツィーの対戦ゲームに参加してプレイしてください。
+	return fmt.Sprintf(`ヤッツィー対戦に参加してプレイせよ。説明や分析は不要。ツールを呼ぶだけでよい。
 
 手順:
 1. join_game で %s に接続（名前: %s）
-2. join_game の結果を確認し、自分のターンでなければ wait_for_turn で待機
-3. 自分のターンでは: roll_dice → 必要に応じて hold_dice → score
-4. score の結果に次のターンの状態が含まれる。wait_for_turn は呼ばないこと。
-5. score の結果で Phase が "Finished" なら終了
-6. 3-5 を繰り返す
+2. 自分のターンでなければ wait_for_turn
+3. 自分のターン: まず roll_dice → ダイスを見て hold_dice か score を選ぶ
+4. score の返り値が次ターンの状態。score 後に wait_for_turn を呼ぶな（デッドロックする）
+5. Phase が "Finished" なら終了。そうでなければ 3 に戻る
 
-重要: score した後は wait_for_turn を呼んではいけない。score の返り値が既に次のターンの状態。
+ルール:
+- 毎ターン最初に必ず roll_dice を呼ぶこと
+- hold_dice でキープするダイスのインデックス(0-4)を指定、残りを振り直す
+- 最大3回ロール（roll_dice 1回 + hold_dice 最大2回）
+- score でカテゴリを選んで得点確定
 
-戦略:
-%s
+戦略: %s
 
-scoreした後はsend_chatで短い実況コメントを日本語で送ること。`, addr, name, strategy)
+score 後に send_chat で一言コメント（日本語、10文字以内）。`, addr, name, strategy)
 }

@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/edge2992/yatzcli/engine"
@@ -133,6 +134,7 @@ func (gs *gameServer) handleRollDice(_ context.Context, _ mcp.CallToolRequest) (
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
+	log.Printf("[bot] roll_dice → %v", state.Dice)
 	return mcp.NewToolResultText(fmt.Sprintf(
 		"Rolled!\n\n%s", formatDiceAndState(state),
 	)), nil
@@ -150,6 +152,7 @@ func (gs *gameServer) handleHoldDice(_ context.Context, req mcp.CallToolRequest)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
+	log.Printf("[bot] hold_dice %v → %v", indices, state.Dice)
 	return mcp.NewToolResultText(fmt.Sprintf(
 		"Held dice at indices %v and rerolled others.\n\n%s", indices, formatDiceAndState(state),
 	)), nil
@@ -169,11 +172,14 @@ func (gs *gameServer) handleScore(_ context.Context, req mcp.CallToolRequest) (*
 	// Get dice BEFORE Score() because Score() advances turn and clears dice
 	currentState, _ := gs.client.GetState()
 	score := engine.CalcScore(cat, currentState.Dice)
+	log.Printf("[bot] score %s → %d pts (waiting for opponent...)", category, score)
 
 	state, scoreErr := gs.client.Score(cat)
 	if scoreErr != nil {
 		return mcp.NewToolResultError(scoreErr.Error()), nil
 	}
+
+	log.Printf("[bot] opponent done, round %d", state.Round)
 
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Scored %d points in %s.\n\n", score, category)
@@ -243,6 +249,7 @@ func (gs *gameServer) handleJoinGame(_ context.Context, req mcp.CallToolRequest)
 	gs.onlineName = name
 
 	state, _ := gs.client.GetState()
+	log.Printf("[bot] Joined game at %s as %s (current: %s)", addr, name, state.CurrentPlayer)
 	return mcp.NewToolResultText(fmt.Sprintf(
 		"Joined game as %s!\n\n%s", name, formatState(state),
 	)), nil
@@ -271,18 +278,21 @@ func (gs *gameServer) handleWaitForTurn(_ context.Context, _ mcp.CallToolRequest
 		return mcp.NewToolResultError("Not connected to a game server. Use join_game first."), nil
 	}
 
+	log.Printf("[bot] wait_for_turn (waiting for opponent...)")
 	state, isGameOver, err := rc.WaitForTurn()
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Connection error: %v", err)), nil
 	}
 
 	if isGameOver {
+		log.Printf("[bot] game over")
 		var sb strings.Builder
 		sb.WriteString("Game Over!\n\n")
 		sb.WriteString(formatFinalScores(state))
 		return mcp.NewToolResultText(sb.String()), nil
 	}
 
+	log.Printf("[bot] my turn! round %d", state.Round)
 	return mcp.NewToolResultText(fmt.Sprintf("Your turn!\n\n%s", formatState(state))), nil
 }
 

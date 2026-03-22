@@ -274,12 +274,19 @@ func (m model) viewChoosing(b *strings.Builder) {
 
 func (m model) viewWaiting(b *strings.Builder) {
 	gs := m.lastState
-	b.WriteString(fmt.Sprintf("  Round %d/13\n\n", gs.Round))
+	// Find opponent name
+	opponent := "opponent"
+	for _, p := range gs.Players {
+		if p.ID == gs.CurrentPlayer && p.Name != m.playerName {
+			opponent = p.Name
+		}
+	}
+	b.WriteString(fmt.Sprintf("  Round %d/13  |  %s のターンを待っています...\n\n", gs.Round, opponent))
 	m.viewDice(b)
 	b.WriteString("\n")
 	m.viewScorecard(b)
 	b.WriteString("\n")
-	b.WriteString("  Waiting for opponent...  [q] Quit\n")
+	b.WriteString("  [q] Quit\n")
 }
 
 func (m model) viewGameOver(b *strings.Builder) {
