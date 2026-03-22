@@ -22,8 +22,14 @@ type uiState int
 const (
 	stateRolling  uiState = iota
 	stateChoosing
+	stateWaiting
 	stateGameOver
 )
+
+type scoreResultMsg struct {
+	state *engine.GameState
+	err   error
+}
 
 type model struct {
 	client     engine.GameClient
@@ -74,6 +80,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, listenForChat(m.chatCh)
 		}
 		return m, nil
+	case scoreResultMsg:
+		if msg.err != nil {
+			m.err = msg.err.Error()
+			m.state = stateRolling
+			return m, nil
+		}
+		m.lastState = msg.state
+		m.held = [5]bool{}
+		if msg.state.Phase == engine.PhaseFinished {
+			m.state = stateGameOver
+		} else {
+			m.state = stateRolling
+		}
+		return m, nil
 	case tea.KeyPressMsg:
 		m.err = ""
 		switch m.state {
@@ -81,6 +101,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateRolling(msg)
 		case stateChoosing:
 			return m.updateChoosing(msg)
+		case stateWaiting:
+			if msg.String() == "q" || msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
 		case stateGameOver:
 			if msg.String() == "q" || msg.String() == "ctrl+c" {
 				return m, tea.Quit
@@ -154,19 +178,12 @@ func (m model) updateChoosing(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		cat := avail[m.cursor]
-		gs, err := m.client.Score(cat)
-		if err != nil {
-			m.err = err.Error()
-			return m, nil
+		m.state = stateWaiting
+		client := m.client
+		return m, func() tea.Msg {
+			gs, err := client.Score(cat)
+			return scoreResultMsg{state: gs, err: err}
 		}
-		m.lastState = gs
-		m.held = [5]bool{}
-		if gs.Phase == engine.PhaseFinished {
-			m.state = stateGameOver
-		} else {
-			m.state = stateRolling
-		}
-		return m, nil
 	}
 	return m, nil
 }
@@ -193,6 +210,8 @@ func (m model) View() tea.View {
 		m.viewRolling(&b)
 	case stateChoosing:
 		m.viewChoosing(&b)
+	case stateWaiting:
+		m.viewWaiting(&b)
 	case stateGameOver:
 		m.viewGameOver(&b)
 	}
@@ -251,6 +270,16 @@ func (m model) viewChoosing(b *strings.Builder) {
 	} else {
 		b.WriteString("  [j/k] Move  [enter] Select  [q] Quit\n")
 	}
+}
+
+func (m model) viewWaiting(b *strings.Builder) {
+	gs := m.lastState
+	b.WriteString(fmt.Sprintf("  Round %d/13\n\n", gs.Round))
+	m.viewDice(b)
+	b.WriteString("\n")
+	m.viewScorecard(b)
+	b.WriteString("\n")
+	b.WriteString("  Waiting for opponent...  [q] Quit\n")
 }
 
 func (m model) viewGameOver(b *strings.Builder) {

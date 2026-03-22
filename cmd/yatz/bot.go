@@ -16,6 +16,7 @@ var botCmd = &cobra.Command{
 		addr, _ := cmd.Flags().GetString("addr")
 		name, _ := cmd.Flags().GetString("name")
 		strategyFile, _ := cmd.Flags().GetString("strategy")
+		model, _ := cmd.Flags().GetString("model")
 
 		strategy := bot.DefaultStrategy
 		if strategyFile != "" {
@@ -26,7 +27,7 @@ var botCmd = &cobra.Command{
 			strategy = string(data)
 		}
 
-		b := bot.New(addr, name, strategy)
+		b := bot.New(addr, name, strategy, model)
 		return b.Run()
 	},
 }

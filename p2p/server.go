@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"net"
 	"sync"
@@ -100,6 +101,7 @@ func acceptClients(ln net.Listener, numPlayers int) ([]*clientConn, error) {
 			playerID: playerID,
 			actionCh: make(chan *ActionPayload, 8),
 		})
+		log.Printf("[server] Player %s connected as %s (%d/%d)", hs.Name, playerID, i+1, numPlayers)
 	}
 	return clients, nil
 }
@@ -108,6 +110,7 @@ func readLoop(cc *clientConn, clients []*clientConn, clientIdx int) {
 	for {
 		msg, err := ReadMessage(cc.conn)
 		if err != nil {
+			log.Printf("[server] Player %s (%s) disconnected", cc.name, cc.playerID)
 			notifyDisconnect(clients, cc.name, clientIdx)
 			// Send nil to actionCh to signal disconnect
 			close(cc.actionCh)
@@ -121,6 +124,7 @@ func readLoop(cc *clientConn, clients []*clientConn, clientIdx int) {
 				_ = writeToClient(cc, NewErrorMsg(fmt.Sprintf("invalid action: %v", err)))
 				continue
 			}
+			log.Printf("[server] %s (%s): %s", cc.name, cc.playerID, ap.Action)
 			cc.actionCh <- ap
 
 		case MsgChat:
@@ -137,12 +141,17 @@ func gameLoop(game *engine.Game, clients []*clientConn) error {
 	for {
 		state := game.GetState()
 		if state.Phase == engine.PhaseFinished {
+			log.Printf("[server] Game over")
+			for _, p := range state.Players {
+				log.Printf("[server]   %s: %d pts", p.Name, p.Scorecard.Total())
+			}
 			broadcast(clients, NewGameOverMsg(state))
 			return nil
 		}
 
 		currentIdx := state.CurrentPlayerIndex
 		cc := clients[currentIdx]
+		log.Printf("[server] Round %d: %s's turn (%s)", state.Round, cc.name, cc.playerID)
 
 		// Send turn_start to current player
 		if err := writeToClient(cc, NewTurnStartMsg(state)); err != nil {
@@ -217,6 +226,7 @@ func RunServer(ln net.Listener, numPlayers int, rngSrc rand.Source) error {
 	}
 
 	game := engine.NewGame(names, rngSrc)
+	log.Printf("[server] Game started with %d players: %v", len(names), names)
 
 	// Broadcast game_start
 	state := game.GetState()

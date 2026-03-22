@@ -10,13 +10,15 @@ type Bot struct {
 	addr     string
 	name     string
 	strategy string
+	model    string
 }
 
-func New(addr, name, strategy string) *Bot {
+func New(addr, name, strategy, model string) *Bot {
 	return &Bot{
 		addr:     addr,
 		name:     name,
 		strategy: strategy,
+		model:    model,
 	}
 }
 
@@ -46,12 +48,17 @@ func (b *Bot) Run() error {
 	prompt := BuildPrompt(b.addr, b.name, b.strategy)
 	systemPrompt := BuildSystemPrompt(b.strategy)
 
-	cmd := exec.Command(claudePath, "-p",
+	args := []string{"-p",
 		"--mcp-config", configFile.Name(),
 		"--allowedTools", "mcp__yatzcli__*",
 		"--system-prompt", systemPrompt,
-		prompt,
-	)
+	}
+	if b.model != "" {
+		args = append(args, "--model", b.model)
+	}
+	args = append(args, prompt)
+
+	cmd := exec.Command(claudePath, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
