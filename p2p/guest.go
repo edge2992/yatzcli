@@ -146,12 +146,19 @@ func (rc *RemoteClient) listen() {
 			}
 
 		case MsgError:
+			rc.expectMu.Lock()
+			expecting := rc.expectResponse
+			rc.expectMu.Unlock()
 			ep, err := DecodeError(msg)
 			if err != nil {
-				rc.responseCh <- responseResult{err: fmt.Errorf("decode error response: %w", err)}
+				if expecting {
+					rc.responseCh <- responseResult{err: fmt.Errorf("decode error response: %w", err)}
+				}
 				continue
 			}
-			rc.responseCh <- responseResult{err: fmt.Errorf("%s", ep.Message)}
+			if expecting {
+				rc.responseCh <- responseResult{err: fmt.Errorf("%s", ep.Message)}
+			}
 
 		case MsgTurnStart:
 			sp, err := DecodeState(msg)

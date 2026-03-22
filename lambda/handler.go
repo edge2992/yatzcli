@@ -128,14 +128,16 @@ func (h *Handler) handleMessage(ctx context.Context, event events.APIGatewayWebs
 	sourceIP := event.RequestContext.Identity.SourceIP
 	endpoint := sourceIP + ":" + strconv.Itoa(msg.Port)
 
-	// Scan for a waiting player (exclude self)
+	// Scan for a waiting player (exclude self).
+	// Note: do not use Limit with FilterExpression — DynamoDB applies
+	// Limit before filtering, which can return 0 results even when
+	// matching items exist.
 	scanOut, err := h.db.Scan(ctx, &dynamodb.ScanInput{
 		TableName:        aws.String(h.table),
 		FilterExpression: aws.String("PlayerID <> :self"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":self": &types.AttributeValueMemberS{Value: connectionID},
 		},
-		Limit: aws.Int32(1),
 	})
 	if err != nil {
 		return fmt.Errorf("scanning waiting players: %w", err)
