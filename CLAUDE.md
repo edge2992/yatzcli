@@ -1,0 +1,41 @@
+# YatzCLI
+
+Yahtzee CLI game in Go. Single binary with local AI play, MCP server for LLM integration, and P2P online play.
+
+## Build & Test
+
+```bash
+go test ./...          # Run all tests
+go build ./cmd/yatz/   # Build binary
+go vet ./...           # Static analysis
+```
+
+## Project Structure
+
+```
+cmd/yatz/   Entry point (cobra subcommands: play, mcp, host, join, match)
+engine/     Pure game logic (state machine, scoring, dice, AI, GameClient interface)
+cli/        Interactive TUI (bubbletea v2)
+mcp/        MCP server for LLM integration (mcp-go, stdio transport)
+p2p/        P2P host-authority online play (length-prefixed JSON over TCP)
+match/      Matchmaking WebSocket client
+lambda/     Serverless matchmaking handler (AWS Lambda + API Gateway + DynamoDB)
+```
+
+## Key Design Decisions
+
+- **GameClient interface** (`engine/client.go`): abstracts local vs remote game access. `LocalClient` wraps `Game` for local play; `RemoteClient` (`p2p/guest.go`) communicates over TCP.
+- **State machine**: 4 phases — `PhaseWaiting`, `PhaseRolling`, `PhaseChoosing`, `PhaseFinished`. Transitions enforced in `engine/game.go`.
+- **Player IDs**: Use hyphens (`player-0`, `player-1`), not underscores.
+- **Host-authority model**: Host runs the game engine; guest sends actions over TCP and receives state updates.
+- **AI auto-play**: `LocalClient.Score()` triggers AI turns automatically via `runAITurns()`.
+- **Scorecard**: `map[Category]*int` where `nil` = unfilled, `*0` = filled with zero.
+
+## Dependencies
+
+- `cobra` — CLI framework
+- `charm.land/bubbletea/v2` — TUI framework
+- `mark3labs/mcp-go` — MCP server
+- `gorilla/websocket` — matchmaking client
+- `aws-lambda-go`, `aws-sdk-go-v2` — serverless matchmaking
+- `stretchr/testify` — test assertions
