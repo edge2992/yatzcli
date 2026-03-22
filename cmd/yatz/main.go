@@ -114,6 +114,10 @@ func init() {
 	rootCmd.AddCommand(matchCmd)
 
 	rootCmd.AddCommand(mcpCmd)
+
+	serveCmd.Flags().IntP("port", "p", 9876, "Port to listen on")
+	serveCmd.Flags().Int("players", 2, "Number of players")
+	rootCmd.AddCommand(serveCmd)
 }
 
 func main() {
