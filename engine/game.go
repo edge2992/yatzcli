@@ -53,6 +53,9 @@ type PlayerState struct {
 }
 
 func NewGame(playerNames []string, src rand.Source) *Game {
+	if len(playerNames) == 0 {
+		panic("NewGame requires at least 1 player")
+	}
 	if src == nil {
 		src = rand.NewSource(time.Now().UnixNano())
 	}
@@ -95,6 +98,11 @@ func (g *Game) Hold(indices []int) error {
 	if g.RollCount >= MaxRolls {
 		return errors.New("cannot hold: max rolls reached")
 	}
+	for _, idx := range indices {
+		if idx < 0 || idx > 4 {
+			return fmt.Errorf("cannot hold: index %d out of range (0-4)", idx)
+		}
+	}
 	g.Dice = Reroll(g.Dice, indices, g.rng)
 	g.RollCount++
 	if g.RollCount >= MaxRolls {
@@ -109,6 +117,9 @@ func (g *Game) Score(category Category) error {
 	}
 	if g.RollCount == 0 {
 		return errors.New("cannot score: must roll first")
+	}
+	if !IsValidCategory(category) {
+		return fmt.Errorf("cannot score: invalid category %q", category)
 	}
 	player := &g.Players[g.Current]
 	if player.Scorecard.IsFilled(category) {

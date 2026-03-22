@@ -73,7 +73,9 @@ func sum(dice [5]int) int {
 func counts(dice [5]int) map[int]int {
 	m := make(map[int]int)
 	for _, d := range dice {
-		m[d]++
+		if d > 0 {
+			m[d]++
+		}
 	}
 	return m
 }

@@ -26,5 +26,14 @@ var AllCategories = []Category{
 
 var UpperCategories = []Category{Ones, Twos, Threes, Fours, Fives, Sixes}
 
+func IsValidCategory(c Category) bool {
+	for _, cat := range AllCategories {
+		if cat == c {
+			return true
+		}
+	}
+	return false
+}
+
 const UpperBonusThreshold = 63
 const UpperBonusValue = 35
