@@ -2,13 +2,24 @@ package engine
 
 import "errors"
 
+// HoldStep records a hold decision during a turn.
+type HoldStep struct {
+	Dice [5]int
+	Held []int
+}
+
 type AIPlayer struct {
 	game     *Game
 	playerID string
+	strategy Strategy
 }
 
 func NewAIPlayer(game *Game, playerID string) *AIPlayer {
-	return &AIPlayer{game: game, playerID: playerID}
+	return &AIPlayer{game: game, playerID: playerID, strategy: &GreedyStrategy{}}
+}
+
+func NewAIPlayerWithStrategy(game *Game, playerID string, strategy Strategy) *AIPlayer {
+	return &AIPlayer{game: game, playerID: playerID, strategy: strategy}
 }
 
 func (ai *AIPlayer) PlayTurn() (AITurnResult, error) {
@@ -18,31 +29,44 @@ func (ai *AIPlayer) PlayTurn() (AITurnResult, error) {
 	if err := ai.game.Roll(); err != nil {
 		return AITurnResult{}, err
 	}
-	dice := ai.game.Dice
-	best := ai.bestCategory()
-	score := CalcScore(best, dice)
-	playerName := ai.game.Players[ai.game.Current].Name
-	if err := ai.game.Score(best); err != nil {
-		return AITurnResult{}, err
-	}
-	return AITurnResult{
-		PlayerName: playerName,
-		Dice:       dice,
-		Category:   best,
-		Score:      score,
-	}, nil
-}
 
-func (ai *AIPlayer) bestCategory() Category {
-	avail := ai.game.Players[ai.game.Current].Scorecard.AvailableCategories()
-	bestCat := avail[0]
-	bestScore := CalcScore(bestCat, ai.game.Dice)
-	for _, c := range avail[1:] {
-		s := CalcScore(c, ai.game.Dice)
-		if s > bestScore {
-			bestScore = s
-			bestCat = c
+	playerName := ai.game.Players[ai.game.Current].Name
+	scorecard := ai.game.Players[ai.game.Current].Scorecard
+	var holdHistory []HoldStep
+
+	for {
+		available := scorecard.AvailableCategories()
+		action := ai.strategy.DecideAction(ai.game.Dice, ai.game.RollCount, scorecard, available)
+
+		if action.Type == "hold" && ai.game.RollCount < MaxRolls {
+			holdHistory = append(holdHistory, HoldStep{
+				Dice: ai.game.Dice,
+				Held: action.Indices,
+			})
+			if err := ai.game.Hold(action.Indices); err != nil {
+				return AITurnResult{}, err
+			}
+			continue
 		}
+
+		// Score — if strategy returned "hold" but no more rolls remain,
+		// fall back to best available category.
+		dice := ai.game.Dice
+		category := action.Category
+		if action.Type != "score" || category == "" {
+			category = bestCategoryForDice(dice, available)
+		}
+		score := CalcScore(category, dice)
+		if err := ai.game.Score(category); err != nil {
+			return AITurnResult{}, err
+		}
+		return AITurnResult{
+			PlayerName:   playerName,
+			Dice:         dice,
+			Category:     category,
+			Score:        score,
+			StrategyName: ai.strategy.Name(),
+			HoldHistory:  holdHistory,
+		}, nil
 	}
-	return bestCat
 }

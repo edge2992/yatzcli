@@ -52,6 +52,24 @@ yatz join 192.168.1.10:9876 --name Bob
 yatz match --server wss://your-api-gateway-url --name Alice
 ```
 
+### AI Battle
+
+Watch AI strategies compete against each other:
+
+```bash
+# Greedy vs Statistical (default)
+yatz battle
+
+# LLM persona battle (requires ANTHROPIC_API_KEY)
+yatz battle --players "Attacker:llm:personas/aggressive.md,Defender:llm:personas/defensive.md"
+
+# Run 100 games and compare statistics
+yatz battle --rounds 100 --quiet
+
+# Three-way battle with fixed seed
+yatz battle --players "G:greedy,S:statistical,L:llm" --seed 42
+```
+
 ## Commands
 
 | Command | Description |
@@ -61,6 +79,7 @@ yatz match --server wss://your-api-gateway-url --name Alice
 | `yatz host` | Host a P2P game |
 | `yatz join <addr>` | Join a P2P game |
 | `yatz match` | Find opponent via matchmaking |
+| `yatz battle` | Watch AI vs AI battle |
 
 ## Controls (TUI)
 
@@ -75,6 +94,29 @@ yatz match --server wss://your-api-gateway-url --name Alice
 - `p2p/` - P2P host-authority online play
 - `match/` - Matchmaking client
 - `lambda/` - Serverless matchmaking handler (AWS)
+- `bot/` - LLM bot integration (Claude API, LLM Strategy)
+- `personas/` - AI persona definitions (Markdown)
+
+## Personas
+
+Create custom AI personas as Markdown files:
+
+```markdown
+# My Custom AI
+## 性格
+Description of personality...
+
+## 戦略
+- Strategy point 1
+- Strategy point 2
+
+## 口癖
+「Catchphrase」
+```
+
+Use with: `yatz battle --players "MyAI:llm:path/to/persona.md"`
+
+Built-in personas: `personas/aggressive.md`, `personas/defensive.md`, `personas/gambler.md`
 
 ## Development
 
