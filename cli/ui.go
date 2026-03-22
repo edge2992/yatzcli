@@ -16,6 +16,18 @@ func WithChatChannel(ch <-chan ChatEntry) GameOption {
 	}
 }
 
+func WithStateUpdateChannel(ch <-chan *engine.GameState) GameOption {
+	return func(m *model) {
+		m.stateUpdateCh = ch
+	}
+}
+
+func WithInitialWaiting() GameOption {
+	return func(m *model) {
+		m.state = stateWaiting
+	}
+}
+
 func RunGame(client engine.GameClient, playerName string, opts ...GameOption) error {
 	m := newModel(client, playerName)
 	for _, opt := range opts {

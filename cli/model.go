@@ -31,23 +31,40 @@ type scoreResultMsg struct {
 	err   error
 }
 
+type stateUpdateMsg struct {
+	state *engine.GameState
+}
+
 type model struct {
 	client     engine.GameClient
 	playerName string
+	playerID   string
 	state      uiState
 	held       [5]bool
 	cursor     int
-	lastState    *engine.GameState
-	err          string
-	chatMessages []ChatEntry
-	chatCh       <-chan ChatEntry
+	lastState      *engine.GameState
+	err            string
+	chatMessages   []ChatEntry
+	chatCh         <-chan ChatEntry
+	stateUpdateCh  <-chan *engine.GameState
 }
 
 func newModel(client engine.GameClient, playerName string) model {
 	s, _ := client.GetState()
+	// Find player ID by name
+	playerID := ""
+	if s != nil {
+		for _, p := range s.Players {
+			if p.Name == playerName {
+				playerID = p.ID
+				break
+			}
+		}
+	}
 	return model{
 		client:     client,
 		playerName: playerName,
+		playerID:   playerID,
 		lastState:  s,
 	}
 }
@@ -62,11 +79,25 @@ func listenForChat(chatCh <-chan ChatEntry) tea.Cmd {
 	}
 }
 
-func (m model) Init() tea.Cmd {
-	if m.chatCh != nil {
-		return listenForChat(m.chatCh)
+func listenForStateUpdate(ch <-chan *engine.GameState) tea.Cmd {
+	return func() tea.Msg {
+		gs, ok := <-ch
+		if !ok {
+			return nil
+		}
+		return stateUpdateMsg{state: gs}
 	}
-	return nil
+}
+
+func (m model) Init() tea.Cmd {
+	var cmds []tea.Cmd
+	if m.chatCh != nil {
+		cmds = append(cmds, listenForChat(m.chatCh))
+	}
+	if m.stateUpdateCh != nil {
+		cmds = append(cmds, listenForStateUpdate(m.stateUpdateCh))
+	}
+	return tea.Batch(cmds...)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -78,6 +109,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.chatCh != nil {
 			return m, listenForChat(m.chatCh)
+		}
+		return m, nil
+	case stateUpdateMsg:
+		m.lastState = msg.state
+		if msg.state.Phase == engine.PhaseFinished {
+			m.state = stateGameOver
+		} else if m.state == stateWaiting && msg.state.CurrentPlayer == m.playerID {
+			// Our turn now
+			m.state = stateRolling
+			m.held = [5]bool{}
+		}
+		if m.stateUpdateCh != nil {
+			return m, listenForStateUpdate(m.stateUpdateCh)
 		}
 		return m, nil
 	case scoreResultMsg:

@@ -35,6 +35,8 @@ type RemoteClient struct {
 	gameOverCh chan *engine.GameState
 	// chatCh delivers chat messages from the host.
 	chatCh chan *ChatPayload
+	// stateUpdateCh delivers broadcast state updates (opponent actions) to the TUI.
+	stateUpdateCh chan *engine.GameState
 	// listenErr holds any fatal error from the listener.
 	listenErr error
 	listenMu  sync.Mutex
@@ -98,14 +100,15 @@ func newRemoteClientFromConn(conn net.Conn, name string) (*RemoteClient, error) 
 	}
 
 	rc := &RemoteClient{
-		conn:       conn,
-		lastState:  &sp.State,
-		playerID:   playerID,
-		playerName: name,
-		responseCh: make(chan responseResult, 1),
-		turnCh:     make(chan *engine.GameState, 1),
-		gameOverCh: make(chan *engine.GameState, 1),
-		chatCh:     make(chan *ChatPayload, 16),
+		conn:          conn,
+		lastState:     &sp.State,
+		playerID:      playerID,
+		playerName:    name,
+		responseCh:    make(chan responseResult, 1),
+		turnCh:        make(chan *engine.GameState, 1),
+		gameOverCh:    make(chan *engine.GameState, 1),
+		chatCh:        make(chan *ChatPayload, 16),
+		stateUpdateCh: make(chan *engine.GameState, 16),
 	}
 
 	go rc.listen()
@@ -154,6 +157,12 @@ func (rc *RemoteClient) listen() {
 			rc.expectMu.Unlock()
 			if expecting {
 				rc.responseCh <- responseResult{state: &sp.State}
+			} else {
+				// Broadcast update (opponent action) — notify TUI
+				select {
+				case rc.stateUpdateCh <- &sp.State:
+				default:
+				}
 			}
 
 		case MsgError:
@@ -178,6 +187,11 @@ func (rc *RemoteClient) listen() {
 			}
 			rc.setLastState(&sp.State)
 			rc.turnCh <- &sp.State
+			// Also notify TUI for state refresh
+			select {
+			case rc.stateUpdateCh <- &sp.State:
+			default:
+			}
 
 		case MsgChat:
 			cp, err := DecodeChat(msg)
@@ -296,6 +310,10 @@ func (rc *RemoteClient) ChatCh() <-chan *ChatPayload {
 	return rc.chatCh
 }
 
+func (rc *RemoteClient) StateUpdateCh() <-chan *engine.GameState {
+	return rc.stateUpdateCh
+}
+
 func (rc *RemoteClient) SendChat(playerID, name, text string) error {
 	rc.writeMu.Lock()
 	defer rc.writeMu.Unlock()
@@ -318,21 +336,6 @@ func RunGuest(addr string, name string) error {
 	}
 	defer rc.Close()
 
-	gs := rc.getLastState()
-
-	// If the host goes first, wait for our turn before starting TUI
-	if gs.CurrentPlayer != rc.playerID {
-		state, isGameOver, err := rc.WaitForTurn()
-		if err != nil {
-			return err
-		}
-		if isGameOver {
-			fmt.Printf("Game over before your turn! Final state received.\n")
-			_ = state
-			return nil
-		}
-	}
-
 	chatCh := make(chan cli.ChatEntry, 16)
 	go func() {
 		for cp := range rc.ChatCh() {
@@ -340,5 +343,25 @@ func RunGuest(addr string, name string) error {
 		}
 		close(chatCh)
 	}()
-	return cli.RunGame(rc, name, cli.WithChatChannel(chatCh))
+
+	stateUpdateCh := make(chan *engine.GameState, 16)
+	go func() {
+		for gs := range rc.StateUpdateCh() {
+			stateUpdateCh <- gs
+		}
+		close(stateUpdateCh)
+	}()
+
+	gs := rc.getLastState()
+	opts := []cli.GameOption{
+		cli.WithChatChannel(chatCh),
+		cli.WithStateUpdateChannel(stateUpdateCh),
+	}
+
+	// If opponent goes first, start TUI in waiting state
+	if gs.CurrentPlayer != rc.playerID {
+		opts = append(opts, cli.WithInitialWaiting())
+	}
+
+	return cli.RunGame(rc, name, opts...)
 }
