@@ -7,10 +7,18 @@ type GameClient interface {
 	GetState() (*GameState, error)
 }
 
+type AITurnResult struct {
+	PlayerName string
+	Dice       [5]int
+	Category   Category
+	Score      int
+}
+
 type LocalClient struct {
-	game     *Game
-	playerID string
-	ais      []*AIPlayer
+	game          *Game
+	playerID      string
+	ais           []*AIPlayer
+	LastAIResults []AITurnResult
 }
 
 func NewLocalClient(game *Game, playerID string, ais []*AIPlayer) *LocalClient {
@@ -50,6 +58,7 @@ func (c *LocalClient) GetState() (*GameState, error) {
 }
 
 func (c *LocalClient) runAITurns() error {
+	c.LastAIResults = nil
 	for c.game.Phase != PhaseFinished {
 		current := c.game.Players[c.game.Current]
 		if current.ID == c.playerID {
@@ -58,9 +67,11 @@ func (c *LocalClient) runAITurns() error {
 		found := false
 		for _, ai := range c.ais {
 			if ai.playerID == current.ID {
-				if err := ai.PlayTurn(); err != nil {
+				result, err := ai.PlayTurn()
+				if err != nil {
 					return err
 				}
+				c.LastAIResults = append(c.LastAIResults, result)
 				found = true
 				break
 			}
