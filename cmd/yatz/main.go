@@ -9,6 +9,7 @@ import (
 	"github.com/edge2992/yatzcli/cli"
 	"github.com/edge2992/yatzcli/engine"
 	mcpserver "github.com/edge2992/yatzcli/mcp"
+	"github.com/edge2992/yatzcli/p2p"
 )
 
 var rootCmd = &cobra.Command{
@@ -40,6 +41,26 @@ var playCmd = &cobra.Command{
 	},
 }
 
+var hostCmd = &cobra.Command{
+	Use:   "host",
+	Short: "Host a P2P game",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		port, _ := cmd.Flags().GetInt("port")
+		name, _ := cmd.Flags().GetString("name")
+		return p2p.RunHost(port, name)
+	},
+}
+
+var joinCmd = &cobra.Command{
+	Use:   "join [address]",
+	Short: "Join a P2P game",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		name, _ := cmd.Flags().GetString("name")
+		return p2p.RunGuest(args[0], name)
+	},
+}
+
 var mcpCmd = &cobra.Command{
 	Use:   "mcp",
 	Short: "Start MCP server for LLM integration",
@@ -52,6 +73,14 @@ func init() {
 	playCmd.Flags().IntP("opponents", "o", 1, "Number of AI opponents (1-3)")
 	playCmd.Flags().StringP("name", "n", "Player", "Your player name")
 	rootCmd.AddCommand(playCmd)
+
+	hostCmd.Flags().IntP("port", "p", 9876, "Port to listen on")
+	hostCmd.Flags().StringP("name", "n", "Host", "Your player name")
+	rootCmd.AddCommand(hostCmd)
+
+	joinCmd.Flags().StringP("name", "n", "Guest", "Your player name")
+	rootCmd.AddCommand(joinCmd)
+
 	rootCmd.AddCommand(mcpCmd)
 }
 
