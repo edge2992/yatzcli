@@ -33,6 +33,10 @@ type RemoteClient struct {
 	turnCh chan *engine.GameState
 	// gameOverCh delivers game_over state.
 	gameOverCh chan *engine.GameState
+	// chatCh delivers chat messages from the host.
+	chatCh chan *ChatPayload
+	// stateUpdateCh delivers broadcast state updates (opponent actions) to the TUI.
+	stateUpdateCh chan *engine.GameState
 	// listenErr holds any fatal error from the listener.
 	listenErr error
 	listenMu  sync.Mutex
@@ -73,6 +77,14 @@ func newRemoteClientFromConn(conn net.Conn, name string) (*RemoteClient, error) 
 	if msg.Type != MsgHandshake {
 		return nil, fmt.Errorf("expected handshake, got %s", msg.Type)
 	}
+	hs, err := DecodeHandshake(msg)
+	if err != nil {
+		return nil, fmt.Errorf("decode handshake: %w", err)
+	}
+	playerID := hs.PlayerID
+	if playerID == "" {
+		playerID = "player-1" // backward compat with old host
+	}
 
 	// Wait for game_start
 	msg, err = ReadMessage(conn)
@@ -88,13 +100,15 @@ func newRemoteClientFromConn(conn net.Conn, name string) (*RemoteClient, error) 
 	}
 
 	rc := &RemoteClient{
-		conn:       conn,
-		lastState:  &sp.State,
-		playerID:   "player-1",
-		playerName: name,
-		responseCh: make(chan responseResult, 1),
-		turnCh:     make(chan *engine.GameState, 1),
-		gameOverCh: make(chan *engine.GameState, 1),
+		conn:          conn,
+		lastState:     &sp.State,
+		playerID:      playerID,
+		playerName:    name,
+		responseCh:    make(chan responseResult, 1),
+		turnCh:        make(chan *engine.GameState, 1),
+		gameOverCh:    make(chan *engine.GameState, 1),
+		chatCh:        make(chan *ChatPayload, 16),
+		stateUpdateCh: make(chan *engine.GameState, 16),
 	}
 
 	go rc.listen()
@@ -143,6 +157,12 @@ func (rc *RemoteClient) listen() {
 			rc.expectMu.Unlock()
 			if expecting {
 				rc.responseCh <- responseResult{state: &sp.State}
+			} else {
+				// Broadcast update (opponent action) — notify TUI
+				select {
+				case rc.stateUpdateCh <- &sp.State:
+				default:
+				}
 			}
 
 		case MsgError:
@@ -167,6 +187,21 @@ func (rc *RemoteClient) listen() {
 			}
 			rc.setLastState(&sp.State)
 			rc.turnCh <- &sp.State
+			// Also notify TUI for state refresh
+			select {
+			case rc.stateUpdateCh <- &sp.State:
+			default:
+			}
+
+		case MsgChat:
+			cp, err := DecodeChat(msg)
+			if err != nil {
+				continue
+			}
+			select {
+			case rc.chatCh <- cp:
+			default: // drop if buffer full
+			}
 
 		case MsgGameOver:
 			sp, err := DecodeState(msg)
@@ -271,6 +306,24 @@ func (rc *RemoteClient) WaitForTurn() (*engine.GameState, bool, error) {
 	}
 }
 
+func (rc *RemoteClient) ChatCh() <-chan *ChatPayload {
+	return rc.chatCh
+}
+
+func (rc *RemoteClient) StateUpdateCh() <-chan *engine.GameState {
+	return rc.stateUpdateCh
+}
+
+func (rc *RemoteClient) SendChat(playerID, name, text string) error {
+	rc.writeMu.Lock()
+	defer rc.writeMu.Unlock()
+	return WriteMessage(rc.conn, NewChatMsg(playerID, name, text))
+}
+
+func (rc *RemoteClient) PlayerID() string {
+	return rc.playerID
+}
+
 func (rc *RemoteClient) Close() error {
 	return rc.conn.Close()
 }
@@ -283,20 +336,32 @@ func RunGuest(addr string, name string) error {
 	}
 	defer rc.Close()
 
-	gs := rc.getLastState()
+	chatCh := make(chan cli.ChatEntry, 16)
+	go func() {
+		for cp := range rc.ChatCh() {
+			chatCh <- cli.ChatEntry{Name: cp.Name, Text: cp.Text}
+		}
+		close(chatCh)
+	}()
 
-	// If the host goes first, wait for our turn before starting TUI
-	if gs.CurrentPlayer != rc.playerID {
-		state, isGameOver, err := rc.WaitForTurn()
-		if err != nil {
-			return err
+	stateUpdateCh := make(chan *engine.GameState, 16)
+	go func() {
+		for gs := range rc.StateUpdateCh() {
+			stateUpdateCh <- gs
 		}
-		if isGameOver {
-			fmt.Printf("Game over before your turn! Final state received.\n")
-			_ = state
-			return nil
-		}
+		close(stateUpdateCh)
+	}()
+
+	gs := rc.getLastState()
+	opts := []cli.GameOption{
+		cli.WithChatChannel(chatCh),
+		cli.WithStateUpdateChannel(stateUpdateCh),
 	}
 
-	return cli.RunGame(rc, name)
+	// If opponent goes first, start TUI in waiting state
+	if gs.CurrentPlayer != rc.playerID {
+		opts = append(opts, cli.WithInitialWaiting())
+	}
+
+	return cli.RunGame(rc, name, opts...)
 }

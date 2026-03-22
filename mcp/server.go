@@ -3,17 +3,20 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/edge2992/yatzcli/engine"
+	"github.com/edge2992/yatzcli/p2p"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 
 type gameServer struct {
-	game   *engine.Game
-	client *engine.LocalClient
-	ais    []*engine.AIPlayer
+	game       *engine.Game
+	client     engine.GameClient
+	ais        []*engine.AIPlayer
+	onlineName string
 }
 
 func Serve() error {
@@ -68,10 +71,34 @@ func newServer() *server.MCPServer {
 	)
 	s.AddTool(getScorecardTool, gs.handleGetScorecard)
 
+	joinGameTool := mcp.NewTool("join_game",
+		mcp.WithDescription("Join a game server for online play"),
+		mcp.WithString("addr", mcp.Required(), mcp.Description("Server address (e.g. localhost:9876)")),
+		mcp.WithString("name", mcp.Description("Your player name (default: Claude)")),
+	)
+	s.AddTool(joinGameTool, gs.handleJoinGame)
+
+	sendChatTool := mcp.NewTool("send_chat",
+		mcp.WithDescription("Send a chat message during an online game"),
+		mcp.WithString("text", mcp.Required(), mcp.Description("Chat message text")),
+	)
+	s.AddTool(sendChatTool, gs.handleSendChat)
+
+	waitForTurnTool := mcp.NewTool("wait_for_turn",
+		mcp.WithDescription("Wait for your turn during an online game. Blocks until it's your turn or game ends. Only use at game start if you're the second player. Do NOT use after scoring — score already waits for opponent."),
+	)
+	s.AddTool(waitForTurnTool, gs.handleWaitForTurn)
+
 	return s
 }
 
 func (gs *gameServer) handleNewGame(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// Cleanup existing online connection
+	if rc, ok := gs.client.(*p2p.RemoteClient); ok {
+		rc.Close()
+	}
+	gs.onlineName = ""
+
 	opponents := req.GetInt("opponents", 1)
 	if opponents < 1 {
 		opponents = 1
@@ -107,6 +134,7 @@ func (gs *gameServer) handleRollDice(_ context.Context, _ mcp.CallToolRequest) (
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
+	log.Printf("[bot] roll_dice → %v", state.Dice)
 	return mcp.NewToolResultText(fmt.Sprintf(
 		"Rolled!\n\n%s", formatDiceAndState(state),
 	)), nil
@@ -124,6 +152,7 @@ func (gs *gameServer) handleHoldDice(_ context.Context, req mcp.CallToolRequest)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
+	log.Printf("[bot] hold_dice %v → %v", indices, state.Dice)
 	return mcp.NewToolResultText(fmt.Sprintf(
 		"Held dice at indices %v and rerolled others.\n\n%s", indices, formatDiceAndState(state),
 	)), nil
@@ -139,12 +168,18 @@ func (gs *gameServer) handleScore(_ context.Context, req mcp.CallToolRequest) (*
 	}
 
 	cat := engine.Category(category)
-	score := engine.CalcScore(cat, gs.game.Dice)
+
+	// Get dice BEFORE Score() because Score() advances turn and clears dice
+	currentState, _ := gs.client.GetState()
+	score := engine.CalcScore(cat, currentState.Dice)
+	log.Printf("[bot] score %s → %d pts (waiting for opponent...)", category, score)
 
 	state, scoreErr := gs.client.Score(cat)
 	if scoreErr != nil {
 		return mcp.NewToolResultError(scoreErr.Error()), nil
 	}
+
+	log.Printf("[bot] opponent done, round %d", state.Round)
 
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Scored %d points in %s.\n\n", score, category)
@@ -189,6 +224,76 @@ func (gs *gameServer) handleGetScorecard(_ context.Context, req mcp.CallToolRequ
 		sb.WriteString(formatPlayerScorecard(p))
 	}
 	return mcp.NewToolResultText(sb.String()), nil
+}
+
+func (gs *gameServer) handleJoinGame(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	addr, err := req.RequireString("addr")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	name := req.GetString("name", "Claude")
+
+	// Cleanup existing online connection
+	if rc, ok := gs.client.(*p2p.RemoteClient); ok {
+		rc.Close()
+	}
+	gs.game = nil
+	gs.ais = nil
+
+	rc, err := p2p.NewRemoteClient(addr, name)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to connect: %v", err)), nil
+	}
+
+	gs.client = rc
+	gs.onlineName = name
+
+	state, _ := gs.client.GetState()
+	log.Printf("[bot] Joined game at %s as %s (current: %s)", addr, name, state.CurrentPlayer)
+	return mcp.NewToolResultText(fmt.Sprintf(
+		"Joined game as %s!\n\n%s", name, formatState(state),
+	)), nil
+}
+
+func (gs *gameServer) handleSendChat(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	rc, ok := gs.client.(*p2p.RemoteClient)
+	if !ok {
+		return mcp.NewToolResultError("Not connected to a game server. Use join_game first."), nil
+	}
+	text, err := req.RequireString("text")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	playerID := rc.PlayerID()
+	if err := rc.SendChat(playerID, gs.onlineName, text); err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to send: %v", err)), nil
+	}
+	return mcp.NewToolResultText("Chat sent."), nil
+}
+
+func (gs *gameServer) handleWaitForTurn(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	rc, ok := gs.client.(*p2p.RemoteClient)
+	if !ok {
+		return mcp.NewToolResultError("Not connected to a game server. Use join_game first."), nil
+	}
+
+	log.Printf("[bot] wait_for_turn (waiting for opponent...)")
+	state, isGameOver, err := rc.WaitForTurn()
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Connection error: %v", err)), nil
+	}
+
+	if isGameOver {
+		log.Printf("[bot] game over")
+		var sb strings.Builder
+		sb.WriteString("Game Over!\n\n")
+		sb.WriteString(formatFinalScores(state))
+		return mcp.NewToolResultText(sb.String()), nil
+	}
+
+	log.Printf("[bot] my turn! round %d", state.Round)
+	return mcp.NewToolResultText(fmt.Sprintf("Your turn!\n\n%s", formatState(state))), nil
 }
 
 func formatDice(dice [5]int) string {

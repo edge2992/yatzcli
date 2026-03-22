@@ -10,6 +10,14 @@ import (
 	"github.com/edge2992/yatzcli/engine"
 )
 
+// ChatEntry is a generic chat message for the TUI (no dependency on p2p).
+type ChatEntry struct {
+	Name string
+	Text string
+}
+
+type chatMsg ChatEntry
+
 type aiTickMsg struct{}
 
 type uiState int
@@ -17,33 +25,86 @@ type uiState int
 const (
 	stateRolling  uiState = iota
 	stateChoosing
+	stateWaiting
 	stateShowingAI
 	stateGameOver
 )
 
+type scoreResultMsg struct {
+	state *engine.GameState
+	err   error
+}
+
+type stateUpdateMsg struct {
+	state *engine.GameState
+}
+
 type model struct {
-	client        engine.GameClient
-	playerName    string
-	state         uiState
-	held          [5]bool
-	cursor        int
-	lastState     *engine.GameState
-	err           string
-	aiResults     []engine.AITurnResult
-	aiResultIndex int
+	client         engine.GameClient
+	playerName     string
+	playerID       string
+	state          uiState
+	held           [5]bool
+	cursor         int
+	lastState      *engine.GameState
+	err            string
+	opponentStatus string
+	chatMessages   []ChatEntry
+	chatCh         <-chan ChatEntry
+	stateUpdateCh  <-chan *engine.GameState
+	aiResults      []engine.AITurnResult
+	aiResultIndex  int
 }
 
 func newModel(client engine.GameClient, playerName string) model {
 	s, _ := client.GetState()
+	// Find player ID by name
+	playerID := ""
+	if s != nil {
+		for _, p := range s.Players {
+			if p.Name == playerName {
+				playerID = p.ID
+				break
+			}
+		}
+	}
 	return model{
 		client:     client,
 		playerName: playerName,
+		playerID:   playerID,
 		lastState:  s,
 	}
 }
 
+func listenForChat(chatCh <-chan ChatEntry) tea.Cmd {
+	return func() tea.Msg {
+		ce, ok := <-chatCh
+		if !ok {
+			return nil
+		}
+		return chatMsg(ce)
+	}
+}
+
+func listenForStateUpdate(ch <-chan *engine.GameState) tea.Cmd {
+	return func() tea.Msg {
+		gs, ok := <-ch
+		if !ok {
+			return nil
+		}
+		return stateUpdateMsg{state: gs}
+	}
+}
+
 func (m model) Init() tea.Cmd {
-	return nil
+	var cmds []tea.Cmd
+	if m.chatCh != nil {
+		cmds = append(cmds, listenForChat(m.chatCh))
+	}
+	if m.stateUpdateCh != nil {
+		cmds = append(cmds, listenForStateUpdate(m.stateUpdateCh))
+	}
+	return tea.Batch(cmds...)
 }
 
 func aiTickCmd() tea.Cmd {
@@ -85,6 +146,49 @@ func (m model) advanceAIResult() (model, tea.Cmd) {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case chatMsg:
+		m.chatMessages = append(m.chatMessages, ChatEntry(msg))
+		if len(m.chatMessages) > 5 {
+			m.chatMessages = m.chatMessages[len(m.chatMessages)-5:]
+		}
+		if m.chatCh != nil {
+			return m, listenForChat(m.chatCh)
+		}
+		return m, nil
+	case stateUpdateMsg:
+		m.lastState = msg.state
+		if msg.state.Phase == engine.PhaseFinished {
+			m.state = stateGameOver
+			m.opponentStatus = ""
+		} else if m.state == stateWaiting && msg.state.CurrentPlayer == m.playerID {
+			// Our turn now
+			m.state = stateRolling
+			m.held = [5]bool{}
+			m.opponentStatus = ""
+		} else if m.state == stateWaiting {
+			// Opponent is playing — show what they're doing
+			switch {
+			case msg.state.RollCount == 0:
+				m.opponentStatus = "考え中..."
+			case msg.state.Phase == engine.PhaseChoosing:
+				m.opponentStatus = fmt.Sprintf("ダイス確定 [%s] → カテゴリ選択中...", formatDiceCompact(msg.state.Dice))
+			default:
+				m.opponentStatus = fmt.Sprintf("ロール %d/%d [%s]", msg.state.RollCount, engine.MaxRolls, formatDiceCompact(msg.state.Dice))
+			}
+		}
+		if m.stateUpdateCh != nil {
+			return m, listenForStateUpdate(m.stateUpdateCh)
+		}
+		return m, nil
+	case scoreResultMsg:
+		if msg.err != nil {
+			m.err = msg.err.Error()
+			m.state = stateRolling
+			return m, nil
+		}
+		m.lastState = msg.state
+		m.held = [5]bool{}
+		return m.enterAIShowOrNext()
 	case aiTickMsg:
 		if m.state == stateShowingAI {
 			return m.advanceAIResult()
@@ -96,6 +200,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateRolling(msg)
 		case stateChoosing:
 			return m.updateChoosing(msg)
+		case stateWaiting:
+			if msg.String() == "q" || msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
 		case stateShowingAI:
 			if msg.String() == "q" || msg.String() == "ctrl+c" {
 				return m, tea.Quit
@@ -174,14 +282,12 @@ func (m model) updateChoosing(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		cat := avail[m.cursor]
-		gs, err := m.client.Score(cat)
-		if err != nil {
-			m.err = err.Error()
-			return m, nil
+		m.state = stateWaiting
+		client := m.client
+		return m, func() tea.Msg {
+			gs, err := client.Score(cat)
+			return scoreResultMsg{state: gs, err: err}
 		}
-		m.lastState = gs
-		m.held = [5]bool{}
-		return m.enterAIShowOrNext()
 	}
 	return m, nil
 }
@@ -208,11 +314,15 @@ func (m model) View() tea.View {
 		m.viewRolling(&b)
 	case stateChoosing:
 		m.viewChoosing(&b)
+	case stateWaiting:
+		m.viewWaiting(&b)
 	case stateShowingAI:
 		m.viewShowingAI(&b)
 	case stateGameOver:
 		m.viewGameOver(&b)
 	}
+
+	m.viewChat(&b)
 
 	if m.err != "" {
 		b.WriteString(fmt.Sprintf("\n  Error: %s\n", m.err))
@@ -268,6 +378,26 @@ func (m model) viewChoosing(b *strings.Builder) {
 	}
 }
 
+func (m model) viewWaiting(b *strings.Builder) {
+	gs := m.lastState
+	// Find opponent name
+	opponent := "opponent"
+	for _, p := range gs.Players {
+		if p.ID == gs.CurrentPlayer && p.Name != m.playerName {
+			opponent = p.Name
+		}
+	}
+	b.WriteString(fmt.Sprintf("  Round %d/13  |  %s のターンを待っています...\n\n", gs.Round, opponent))
+	if m.opponentStatus != "" {
+		b.WriteString(fmt.Sprintf("  ▶ %s\n\n", m.opponentStatus))
+	}
+	m.viewDice(b)
+	b.WriteString("\n")
+	m.viewScorecard(b)
+	b.WriteString("\n")
+	b.WriteString("  [q] Quit\n")
+}
+
 func (m model) viewGameOver(b *strings.Builder) {
 	b.WriteString("  ===  GAME OVER  ===\n\n")
 	m.viewScorecard(b)
@@ -281,6 +411,16 @@ func (m model) viewGameOver(b *strings.Builder) {
 	}
 	b.WriteString(fmt.Sprintf("  Winner: %s with %d points!\n\n", winner.Name, winner.Scorecard.Total()))
 	b.WriteString("  [q] Quit\n")
+}
+
+func (m model) viewChat(b *strings.Builder) {
+	if len(m.chatMessages) == 0 {
+		return
+	}
+	b.WriteString("\n  ─── Chat ────────────────────────\n")
+	for _, c := range m.chatMessages {
+		b.WriteString(fmt.Sprintf("  %s: %s\n", c.Name, c.Text))
+	}
 }
 
 func (m model) viewShowingAI(b *strings.Builder) {
@@ -405,4 +545,8 @@ func categoryName(c engine.Category) string {
 		return name
 	}
 	return string(c)
+}
+
+func formatDiceCompact(dice [5]int) string {
+	return fmt.Sprintf("%d %d %d %d %d", dice[0], dice[1], dice[2], dice[3], dice[4])
 }

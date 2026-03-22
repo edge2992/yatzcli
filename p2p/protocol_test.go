@@ -136,6 +136,81 @@ func TestMessage_RoundTrip_Error(t *testing.T) {
 	}
 }
 
+func TestMessage_RoundTrip_HandshakeBackwardCompat(t *testing.T) {
+	msg := NewHandshakeMsg("Bob")
+	var buf bytes.Buffer
+	if err := WriteMessage(&buf, msg); err != nil {
+		t.Fatalf("WriteMessage: %v", err)
+	}
+	got, err := ReadMessage(&buf)
+	if err != nil {
+		t.Fatalf("ReadMessage: %v", err)
+	}
+	payload, err := DecodeHandshake(got)
+	if err != nil {
+		t.Fatalf("DecodeHandshake: %v", err)
+	}
+	if payload.Name != "Bob" {
+		t.Errorf("name = %q, want %q", payload.Name, "Bob")
+	}
+	if payload.PlayerID != "" {
+		t.Errorf("player_id = %q, want empty (omitempty)", payload.PlayerID)
+	}
+}
+
+func TestMessage_RoundTrip_HandshakeWithPlayerID(t *testing.T) {
+	msg := newMessage(MsgHandshake, HandshakePayload{Name: "Alice", PlayerID: "player-0"})
+	var buf bytes.Buffer
+	if err := WriteMessage(&buf, msg); err != nil {
+		t.Fatalf("WriteMessage: %v", err)
+	}
+	got, err := ReadMessage(&buf)
+	if err != nil {
+		t.Fatalf("ReadMessage: %v", err)
+	}
+	if got.Type != MsgHandshake {
+		t.Fatalf("type = %q, want %q", got.Type, MsgHandshake)
+	}
+	payload, err := DecodeHandshake(got)
+	if err != nil {
+		t.Fatalf("DecodeHandshake: %v", err)
+	}
+	if payload.Name != "Alice" {
+		t.Errorf("name = %q, want %q", payload.Name, "Alice")
+	}
+	if payload.PlayerID != "player-0" {
+		t.Errorf("player_id = %q, want %q", payload.PlayerID, "player-0")
+	}
+}
+
+func TestMessage_RoundTrip_Chat(t *testing.T) {
+	msg := NewChatMsg("player-0", "Alice", "Hello, world!")
+	var buf bytes.Buffer
+	if err := WriteMessage(&buf, msg); err != nil {
+		t.Fatalf("WriteMessage: %v", err)
+	}
+	got, err := ReadMessage(&buf)
+	if err != nil {
+		t.Fatalf("ReadMessage: %v", err)
+	}
+	if got.Type != MsgChat {
+		t.Fatalf("type = %q, want %q", got.Type, MsgChat)
+	}
+	payload, err := DecodeChat(got)
+	if err != nil {
+		t.Fatalf("DecodeChat: %v", err)
+	}
+	if payload.PlayerID != "player-0" {
+		t.Errorf("player_id = %q, want %q", payload.PlayerID, "player-0")
+	}
+	if payload.Name != "Alice" {
+		t.Errorf("name = %q, want %q", payload.Name, "Alice")
+	}
+	if payload.Text != "Hello, world!" {
+		t.Errorf("text = %q, want %q", payload.Text, "Hello, world!")
+	}
+}
+
 func TestMessage_RoundTrip_GameStart(t *testing.T) {
 	state := sampleState()
 	msg := NewGameStartMsg(state)

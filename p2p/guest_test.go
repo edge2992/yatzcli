@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/edge2992/yatzcli/engine"
 )
@@ -273,6 +274,129 @@ func TestRemoteClient_Handshake(t *testing.T) {
 	}
 	if len(gs.Players) != 2 {
 		t.Errorf("expected 2 players, got %d", len(gs.Players))
+	}
+}
+
+func TestRemoteClient_DynamicPlayerID(t *testing.T) {
+	hostConn, guestConn := net.Pipe()
+	defer hostConn.Close()
+	defer guestConn.Close()
+
+	go func() {
+		// Read guest handshake
+		msg, err := ReadMessage(hostConn)
+		if err != nil {
+			return
+		}
+		if msg.Type != MsgHandshake {
+			return
+		}
+
+		// Send handshake response with PlayerID set
+		hsResp := newMessage(MsgHandshake, HandshakePayload{
+			Name:     "Host",
+			PlayerID: "player-42",
+		})
+		if err := WriteMessage(hostConn, hsResp); err != nil {
+			return
+		}
+
+		// Send game_start
+		state := sampleState()
+		if err := WriteMessage(hostConn, NewGameStartMsg(state)); err != nil {
+			return
+		}
+	}()
+
+	rc, err := newRemoteClientFromConn(guestConn, "Guest")
+	if err != nil {
+		t.Fatalf("newRemoteClientFromConn: %v", err)
+	}
+	defer rc.Close()
+
+	if rc.playerID != "player-42" {
+		t.Errorf("expected playerID player-42, got %s", rc.playerID)
+	}
+}
+
+func TestRemoteClient_DynamicPlayerID_BackwardCompat(t *testing.T) {
+	hostConn, guestConn := net.Pipe()
+	defer hostConn.Close()
+	defer guestConn.Close()
+
+	go func() {
+		msg, err := ReadMessage(hostConn)
+		if err != nil {
+			return
+		}
+		if msg.Type != MsgHandshake {
+			return
+		}
+
+		// Send handshake response WITHOUT PlayerID (old host)
+		if err := WriteMessage(hostConn, NewHandshakeMsg("OldHost")); err != nil {
+			return
+		}
+
+		state := sampleState()
+		if err := WriteMessage(hostConn, NewGameStartMsg(state)); err != nil {
+			return
+		}
+	}()
+
+	rc, err := newRemoteClientFromConn(guestConn, "Guest")
+	if err != nil {
+		t.Fatalf("newRemoteClientFromConn: %v", err)
+	}
+	defer rc.Close()
+
+	if rc.playerID != "player-1" {
+		t.Errorf("expected playerID player-1 (backward compat), got %s", rc.playerID)
+	}
+}
+
+func TestRemoteClient_ChatChannel(t *testing.T) {
+	hostConn, guestConn := net.Pipe()
+	defer hostConn.Close()
+	defer guestConn.Close()
+
+	mockHostCh := make(chan *mockHost, 1)
+	go func() {
+		mh, err := newMockHost(hostConn, rand.NewSource(42))
+		if err != nil {
+			return
+		}
+		mockHostCh <- mh
+	}()
+
+	rc, err := newRemoteClientFromConn(guestConn, "TestGuest")
+	if err != nil {
+		t.Fatalf("newRemoteClientFromConn: %v", err)
+	}
+	defer rc.Close()
+
+	<-mockHostCh
+
+	// Send a chat message from host side
+	chatMsg := NewChatMsg("player-0", "Host", "Hello from host!")
+	if err := WriteMessage(hostConn, chatMsg); err != nil {
+		t.Fatalf("send chat: %v", err)
+	}
+
+	// Read from ChatCh
+	select {
+	case cp := <-rc.ChatCh():
+		if cp.PlayerID != "player-0" {
+			t.Errorf("expected player-0, got %s", cp.PlayerID)
+		}
+		if cp.Name != "Host" {
+			t.Errorf("expected Host, got %s", cp.Name)
+		}
+		if cp.Text != "Hello from host!" {
+			t.Errorf("expected 'Hello from host!', got %s", cp.Text)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for chat message")
 	}
 }
 

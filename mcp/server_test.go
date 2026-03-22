@@ -6,6 +6,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/stretchr/testify/assert"
 )
 
 func setupClient(t *testing.T) *client.Client {
@@ -265,6 +266,42 @@ func TestGetScorecardInvalidPlayer(t *testing.T) {
 	}
 }
 
+func TestSendChatBeforeJoin(t *testing.T) {
+	c := setupClient(t)
+
+	// send_chat without join_game should error
+	result := callTool(t, c, "send_chat", map[string]interface{}{
+		"text": "hello",
+	})
+	text := getText(t, result)
+
+	if !result.IsError {
+		t.Error("expected error for send_chat before join_game")
+	}
+	if !contains(text, "Not connected to a game server") {
+		t.Errorf("expected connection error, got: %s", text)
+	}
+}
+
+func TestSendChatAfterNewGame(t *testing.T) {
+	c := setupClient(t)
+
+	// Start a local game, then try send_chat — should error because it's not an online game
+	callTool(t, c, "new_game", map[string]interface{}{"opponents": 1.0})
+
+	result := callTool(t, c, "send_chat", map[string]interface{}{
+		"text": "hello",
+	})
+	text := getText(t, result)
+
+	if !result.IsError {
+		t.Error("expected error for send_chat in local game")
+	}
+	if !contains(text, "Not connected to a game server") {
+		t.Errorf("expected connection error, got: %s", text)
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && containsStr(s, substr)
 }
@@ -276,4 +313,24 @@ func containsStr(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func TestWaitForTurnRequiresOnlineGame(t *testing.T) {
+	c := setupClient(t)
+	// No game started — should error
+	result := callTool(t, c, "wait_for_turn", nil)
+	text := getText(t, result)
+	assert.True(t, result.IsError)
+	assert.Contains(t, text, "Not connected")
+}
+
+func TestWaitForTurnRejectsLocalGame(t *testing.T) {
+	c := setupClient(t)
+	// Start a local game
+	callTool(t, c, "new_game", map[string]interface{}{"opponents": 1})
+	// wait_for_turn should reject local games
+	result := callTool(t, c, "wait_for_turn", nil)
+	text := getText(t, result)
+	assert.True(t, result.IsError)
+	assert.Contains(t, text, "Not connected")
 }
