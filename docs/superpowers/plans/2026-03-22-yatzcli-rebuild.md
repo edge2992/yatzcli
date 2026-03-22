@@ -814,9 +814,9 @@ func TestGame_Hold_BeforeRoll(t *testing.T) {
 
 func TestGame_Hold_MaxRolls(t *testing.T) {
 	g := newTestGame()
-	g.Roll()
-	g.Hold([]int{})
-	// After 3rd roll, phase should be PhaseChoosing
+	g.Roll()       // rollCount=1
+	g.Hold([]int{}) // rollCount=2
+	g.Hold([]int{}) // rollCount=3 -> PhaseChoosing
 	if g.Phase != PhaseChoosing {
 		t.Errorf("expected PhaseChoosing after 3 rolls, got %d", g.Phase)
 	}
@@ -1073,6 +1073,7 @@ func (g *Game) advanceTurn() {
 		g.Phase = PhaseFinished
 		return
 	}
+	g.Phase = PhaseRolling
 	g.RollCount = 0
 	g.Dice = [5]int{}
 }
@@ -1652,7 +1653,7 @@ func TestMessage_RoundTrip_Handshake(t *testing.T) {
 }
 
 func TestMessage_RoundTrip_Action(t *testing.T) {
-	msg := NewActionMsg(ActionRoll, nil)
+	msg := NewActionMsg(ActionPayload{Action: ActionRoll})
 	var buf bytes.Buffer
 	if err := WriteMessage(&buf, msg); err != nil {
 		t.Fatalf("write error: %v", err)
@@ -1748,11 +1749,8 @@ func NewHandshakeMsg(name string) *Message {
 	return &Message{Type: MsgHandshake, Payload: payload}
 }
 
-func NewActionMsg(action string, data interface{}) *Message {
-	payload, _ := json.Marshal(ActionPayload{Action: action})
-	if data != nil {
-		payload, _ = json.Marshal(data)
-	}
+func NewActionMsg(ap ActionPayload) *Message {
+	payload, _ := json.Marshal(ap)
 	return &Message{Type: MsgAction, Payload: payload}
 }
 
@@ -1993,7 +1991,7 @@ Expected: FAIL — `FindMatch` not defined.
 
 - [ ] **Step 3: Implement matchmaking client**
 
-Create `match/client.go` — `FindMatch(wsURL, name, port string) (*MatchResult, error)` connects to matchmaking WebSocket API, sends player info (name, listening port), waits for match notification. Returns the opponent's address and whether this client is host or guest.
+Create `match/client.go` — `FindMatch(wsURL string, name string, port int) (*MatchResult, error)` connects to matchmaking WebSocket API, sends player info (name, listening port), waits for match notification. Returns the opponent's address and whether this client is host or guest.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
