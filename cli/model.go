@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -17,12 +18,15 @@ type ChatEntry struct {
 
 type chatMsg ChatEntry
 
+type aiTickMsg struct{}
+
 type uiState int
 
 const (
 	stateRolling  uiState = iota
 	stateChoosing
 	stateWaiting
+	stateShowingAI
 	stateGameOver
 )
 
@@ -36,18 +40,20 @@ type stateUpdateMsg struct {
 }
 
 type model struct {
-	client     engine.GameClient
-	playerName string
-	playerID   string
-	state      uiState
-	held       [5]bool
-	cursor     int
+	client         engine.GameClient
+	playerName     string
+	playerID       string
+	state          uiState
+	held           [5]bool
+	cursor         int
 	lastState      *engine.GameState
 	err            string
 	opponentStatus string
 	chatMessages   []ChatEntry
 	chatCh         <-chan ChatEntry
 	stateUpdateCh  <-chan *engine.GameState
+	aiResults      []engine.AITurnResult
+	aiResultIndex  int
 }
 
 func newModel(client engine.GameClient, playerName string) model {
@@ -101,6 +107,43 @@ func (m model) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
+func aiTickCmd() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return aiTickMsg{}
+	})
+}
+
+func (m model) enterAIShowOrNext() (model, tea.Cmd) {
+	if lc, ok := m.client.(*engine.LocalClient); ok && len(lc.LastAIResults) > 0 {
+		m.aiResults = lc.LastAIResults
+		lc.LastAIResults = nil
+		m.aiResultIndex = 0
+		m.state = stateShowingAI
+		return m, aiTickCmd()
+	}
+	if m.lastState.Phase == engine.PhaseFinished {
+		m.state = stateGameOver
+	} else {
+		m.state = stateRolling
+	}
+	return m, nil
+}
+
+func (m model) advanceAIResult() (model, tea.Cmd) {
+	m.aiResultIndex++
+	if m.aiResultIndex >= len(m.aiResults) {
+		m.aiResults = nil
+		m.aiResultIndex = 0
+		if m.lastState.Phase == engine.PhaseFinished {
+			m.state = stateGameOver
+		} else {
+			m.state = stateRolling
+		}
+		return m, nil
+	}
+	return m, aiTickCmd()
+}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case chatMsg:
@@ -145,12 +188,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.lastState = msg.state
 		m.held = [5]bool{}
-		if msg.state.Phase == engine.PhaseFinished {
-			m.state = stateGameOver
-		} else {
-			m.state = stateRolling
+		return m.enterAIShowOrNext()
+	case aiTickMsg:
+		if m.state == stateShowingAI {
+			return m.advanceAIResult()
 		}
-		return m, nil
 	case tea.KeyPressMsg:
 		m.err = ""
 		switch m.state {
@@ -162,6 +204,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.String() == "q" || msg.String() == "ctrl+c" {
 				return m, tea.Quit
 			}
+		case stateShowingAI:
+			if msg.String() == "q" || msg.String() == "ctrl+c" {
+				return m, tea.Quit
+			}
+			return m.advanceAIResult()
 		case stateGameOver:
 			if msg.String() == "q" || msg.String() == "ctrl+c" {
 				return m, tea.Quit
@@ -269,6 +316,8 @@ func (m model) View() tea.View {
 		m.viewChoosing(&b)
 	case stateWaiting:
 		m.viewWaiting(&b)
+	case stateShowingAI:
+		m.viewShowingAI(&b)
 	case stateGameOver:
 		m.viewGameOver(&b)
 	}
@@ -372,6 +421,24 @@ func (m model) viewChat(b *strings.Builder) {
 	for _, c := range m.chatMessages {
 		b.WriteString(fmt.Sprintf("  %s: %s\n", c.Name, c.Text))
 	}
+}
+
+func (m model) viewShowingAI(b *strings.Builder) {
+	if m.aiResultIndex >= len(m.aiResults) {
+		return
+	}
+	r := m.aiResults[m.aiResultIndex]
+	b.WriteString(fmt.Sprintf("  === %s's Turn ===\n\n", r.PlayerName))
+	b.WriteString("  Dice: ")
+	for i, d := range r.Dice {
+		b.WriteString(fmt.Sprintf("[ %d ]", d))
+		if i < 4 {
+			b.WriteString(" ")
+		}
+	}
+	b.WriteString("\n\n")
+	b.WriteString(fmt.Sprintf("  Scored: %-16s  %3d pts\n\n", categoryName(r.Category), r.Score))
+	b.WriteString(fmt.Sprintf("  (%d/%d)  Press any key to continue...\n", m.aiResultIndex+1, len(m.aiResults)))
 }
 
 func (m model) viewDice(b *strings.Builder) {
