@@ -26,10 +26,7 @@ var botCmd = &cobra.Command{
 			strategy = string(data)
 		}
 
-		b, err := bot.New(addr, name, strategy)
-		if err != nil {
-			return err
-		}
+		b := bot.New(addr, name, strategy)
 		return b.Run()
 	},
 }

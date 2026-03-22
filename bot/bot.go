@@ -4,169 +4,59 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-
-	"github.com/edge2992/yatzcli/engine"
-	"github.com/edge2992/yatzcli/p2p"
 )
 
-const maxRetries = 3
-
 type Bot struct {
-	client   *p2p.RemoteClient
+	addr     string
 	name     string
 	strategy string
 }
 
-func New(addr, name, strategy string) (*Bot, error) {
-	rc, err := p2p.NewRemoteClient(addr, name)
-	if err != nil {
-		return nil, fmt.Errorf("connect to server: %w", err)
-	}
+func New(addr, name, strategy string) *Bot {
 	return &Bot{
-		client:   rc,
+		addr:     addr,
 		name:     name,
 		strategy: strategy,
-	}, nil
+	}
 }
 
 func (b *Bot) Run() error {
-	defer b.client.Close()
-
-	state, err := b.client.GetState()
+	claudePath, err := exec.LookPath("claude")
 	if err != nil {
-		return fmt.Errorf("get initial state: %w", err)
+		return fmt.Errorf("claude CLI is required. Install it first: %w", err)
 	}
 
-	// If it's not our turn at the start, wait
-	if state.CurrentPlayer != b.client.PlayerID() {
-		fmt.Fprintf(os.Stderr, "Waiting for our turn...\n")
-		s, isGameOver, err := b.client.WaitForTurn()
-		if err != nil {
-			return fmt.Errorf("wait for turn: %w", err)
-		}
-		if isGameOver {
-			b.printFinalScore(s)
-			return nil
-		}
-		state = s
+	selfPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("resolve executable path: %w", err)
 	}
 
-	for state.Phase != engine.PhaseFinished {
-		state, err = b.playTurn(state)
-		if err != nil {
-			return err
-		}
+	configFile, err := os.CreateTemp("", "yatz-mcp-*.json")
+	if err != nil {
+		return fmt.Errorf("create temp config: %w", err)
 	}
+	defer os.Remove(configFile.Name())
 
-	b.printFinalScore(state)
-	return nil
-}
-
-func (b *Bot) playTurn(state *engine.GameState) (*engine.GameState, error) {
-	round := state.Round
-	var lastErr string
-
-	for {
-		resp, err := b.callClaudeWithRetry(state, lastErr)
-		if err != nil {
-			return nil, fmt.Errorf("claude call failed: %w", err)
-		}
-
-		switch resp.Action {
-		case "roll":
-			newState, err := b.client.Roll()
-			if err != nil {
-				lastErr = err.Error()
-				fmt.Fprintf(os.Stderr, "[Round %d] Roll error: %s\n", round, lastErr)
-				continue
-			}
-			fmt.Fprintf(os.Stdout, "[Round %d] Roll: %v\n", round, newState.Dice)
-			state = newState
-			lastErr = ""
-
-		case "hold":
-			newState, err := b.client.Hold(resp.Indices)
-			if err != nil {
-				lastErr = err.Error()
-				fmt.Fprintf(os.Stderr, "[Round %d] Hold error: %s\n", round, lastErr)
-				continue
-			}
-			fmt.Fprintf(os.Stdout, "[Round %d] Hold %v → %v\n", round, resp.Indices, newState.Dice)
-			state = newState
-			lastErr = ""
-
-		case "score":
-			cat := engine.Category(resp.Category)
-			score := engine.CalcScore(cat, state.Dice)
-			newState, err := b.client.Score(cat)
-			if err != nil {
-				lastErr = err.Error()
-				fmt.Fprintf(os.Stderr, "[Round %d] Score error: %s\n", round, lastErr)
-				continue
-			}
-			fmt.Fprintf(os.Stdout, "[Round %d] Score: %s (%d pts) — %q\n", round, cat, score, resp.Comment)
-
-			// Send chat
-			if resp.Comment != "" {
-				_ = b.client.SendChat(b.client.PlayerID(), b.name, resp.Comment)
-			}
-
-			return newState, nil
-
-		default:
-			lastErr = fmt.Sprintf("unknown action %q", resp.Action)
-			fmt.Fprintf(os.Stderr, "[Round %d] Unknown action: %s\n", round, resp.Action)
-		}
+	if _, err := configFile.WriteString(BuildMCPConfig(selfPath)); err != nil {
+		configFile.Close()
+		return fmt.Errorf("write MCP config: %w", err)
 	}
-}
+	configFile.Close()
 
-func (b *Bot) callClaudeWithRetry(state *engine.GameState, lastErr string) (*ClaudeResponse, error) {
+	prompt := BuildPrompt(b.addr, b.name, b.strategy)
 	systemPrompt := BuildSystemPrompt(b.strategy)
-	schemaJSON := ResponseSchemaJSON()
 
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		var userPrompt string
-		if lastErr != "" && attempt == 0 {
-			userPrompt = BuildRetryPrompt(state, b.client.PlayerID(), lastErr)
-		} else {
-			userPrompt = BuildUserPrompt(state, b.client.PlayerID())
-		}
-
-		output, err := callClaude(systemPrompt, schemaJSON, userPrompt)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "claude command failed (attempt %d/%d): %v\n", attempt+1, maxRetries, err)
-			continue
-		}
-
-		resp, err := ParseResponse(output)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "parse response failed (attempt %d/%d): %v\n", attempt+1, maxRetries, err)
-			continue
-		}
-
-		return resp, nil
-	}
-	return nil, fmt.Errorf("claude failed after %d retries", maxRetries)
-}
-
-func callClaude(systemPrompt, schemaJSON, userPrompt string) ([]byte, error) {
-	cmd := exec.Command("claude", "-p",
-		"--output-format", "json",
-		"--json-schema", schemaJSON,
+	cmd := exec.Command(claudePath, "-p",
+		"--mcp-config", configFile.Name(),
+		"--allowedTools", "mcp__yatzcli__*",
 		"--system-prompt", systemPrompt,
-		userPrompt,
+		prompt,
 	)
+	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("execute claude: %w", err)
-	}
-	return output, nil
-}
 
-func (b *Bot) printFinalScore(state *engine.GameState) {
-	fmt.Fprintf(os.Stdout, "\n=== Game Over ===\n")
-	for _, p := range state.Players {
-		fmt.Fprintf(os.Stdout, "%s: %d pts\n", p.Name, p.Scorecard.Total())
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("claude exited with error: %w", err)
 	}
+	return nil
 }
