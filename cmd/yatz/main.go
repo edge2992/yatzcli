@@ -8,6 +8,7 @@ import (
 
 	"github.com/edge2992/yatzcli/cli"
 	"github.com/edge2992/yatzcli/engine"
+	"github.com/edge2992/yatzcli/match"
 	mcpserver "github.com/edge2992/yatzcli/mcp"
 	"github.com/edge2992/yatzcli/p2p"
 )
@@ -61,6 +62,33 @@ var joinCmd = &cobra.Command{
 	},
 }
 
+var matchCmd = &cobra.Command{
+	Use:   "match",
+	Short: "Find opponent via matchmaking server",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		name, _ := cmd.Flags().GetString("name")
+		serverURL, _ := cmd.Flags().GetString("server")
+
+		port, err := match.GetFreePort()
+		if err != nil {
+			return fmt.Errorf("failed to get free port: %w", err)
+		}
+
+		fmt.Printf("Searching for opponent...\n")
+		result, err := match.FindMatch(serverURL, name, port)
+		if err != nil {
+			return fmt.Errorf("matchmaking failed: %w", err)
+		}
+
+		fmt.Printf("Matched with %s!\n", result.OpponentName)
+
+		if result.IsHost {
+			return p2p.RunHost(port, name)
+		}
+		return p2p.RunGuest(result.OpponentAddr, name)
+	},
+}
+
 var mcpCmd = &cobra.Command{
 	Use:   "mcp",
 	Short: "Start MCP server for LLM integration",
@@ -80,6 +108,10 @@ func init() {
 
 	joinCmd.Flags().StringP("name", "n", "Guest", "Your player name")
 	rootCmd.AddCommand(joinCmd)
+
+	matchCmd.Flags().StringP("name", "n", "Player", "Your player name")
+	matchCmd.Flags().String("server", "", "Matchmaking server WebSocket URL")
+	rootCmd.AddCommand(matchCmd)
 
 	rootCmd.AddCommand(mcpCmd)
 }

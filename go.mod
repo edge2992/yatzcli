@@ -4,6 +4,7 @@ go 1.24.2
 
 require (
 	charm.land/bubbletea/v2 v2.0.2
+	github.com/gorilla/websocket v1.5.3
 	github.com/mark3labs/mcp-go v0.45.0
 	github.com/spf13/cobra v1.10.2
 )
