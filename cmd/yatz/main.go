@@ -118,6 +118,11 @@ func init() {
 	serveCmd.Flags().IntP("port", "p", 9876, "Port to listen on")
 	serveCmd.Flags().Int("players", 2, "Number of players")
 	rootCmd.AddCommand(serveCmd)
+
+	botCmd.Flags().String("addr", "localhost:9876", "Game server address")
+	botCmd.Flags().StringP("name", "n", "Claude", "Bot player name")
+	botCmd.Flags().String("strategy", "", "Path to strategy file (uses built-in if empty)")
+	rootCmd.AddCommand(botCmd)
 }
 
 func main() {
