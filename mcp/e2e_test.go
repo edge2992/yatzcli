@@ -9,6 +9,9 @@ import (
 // through the MCP server tools: new_game → (roll_dice → score) × 13.
 // Verifies game progresses through all rounds and ends with "Game Over".
 func TestE2E_FullGameThroughMCP(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping E2E test in short mode")
+	}
 	c := setupClient(t)
 
 	// Start a new game with 1 AI opponent
@@ -92,6 +95,9 @@ func TestE2E_FullGameThroughMCP(t *testing.T) {
 // TestE2E_FullGameWithHoldThroughMCP plays a complete game using
 // roll → hold → score pattern to verify the hold mechanic works across rounds.
 func TestE2E_FullGameWithHoldThroughMCP(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping E2E test in short mode")
+	}
 	c := setupClient(t)
 
 	result := callTool(t, c, "new_game", map[string]interface{}{

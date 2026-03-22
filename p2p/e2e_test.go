@@ -14,6 +14,9 @@ import (
 // over the P2P protocol using net.Pipe(). Host (player-0) and guest
 // (player-1) alternate turns, each rolling once then scoring.
 func TestE2E_FullGameP2P(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping E2E test in short mode")
+	}
 	hostConn, guestConn := net.Pipe()
 	defer hostConn.Close()
 	defer guestConn.Close()
@@ -196,6 +199,9 @@ func TestE2E_FullGameP2P(t *testing.T) {
 // TestE2E_FullGameP2PWithHold plays a full game where the guest uses
 // roll → hold → score each turn.
 func TestE2E_FullGameP2PWithHold(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping E2E test in short mode")
+	}
 	hostConn, guestConn := net.Pipe()
 	defer hostConn.Close()
 	defer guestConn.Close()
