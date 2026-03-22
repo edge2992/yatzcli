@@ -63,11 +63,16 @@ func WriteMessage(w io.Writer, msg *Message) error {
 	return nil
 }
 
+const maxMessageSize = 1 << 20 // 1 MB
+
 // ReadMessage reads a length-prefixed JSON message from r.
 func ReadMessage(r io.Reader) (*Message, error) {
 	var length uint32
 	if err := binary.Read(r, binary.BigEndian, &length); err != nil {
 		return nil, fmt.Errorf("read length: %w", err)
+	}
+	if length > maxMessageSize {
+		return nil, fmt.Errorf("message too large: %d bytes (max %d)", length, maxMessageSize)
 	}
 	data := make([]byte, length)
 	if _, err := io.ReadFull(r, data); err != nil {

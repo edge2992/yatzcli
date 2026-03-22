@@ -1,6 +1,9 @@
 package engine
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 func TestNewScorecard(t *testing.T) {
 	sc := NewScorecard()
@@ -98,5 +101,37 @@ func TestTotal(t *testing.T) {
 	// Upper total = 63, has bonus = 35, chance = 20 => total = 63 + 35 + 20 = 118
 	if got := sc.Total(); got != 118 {
 		t.Errorf("expected total 118, got %d", got)
+	}
+}
+
+func TestScorecardJSON(t *testing.T) {
+	sc := NewScorecard()
+	sc.Fill(Ones, 3)
+	sc.Fill(Yahtzee, 0)
+
+	data, err := json.Marshal(sc)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	var sc2 Scorecard
+	if err := json.Unmarshal(data, &sc2); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+
+	if !sc2.IsFilled(Ones) {
+		t.Error("expected Ones to be filled after round-trip")
+	}
+	if got := sc2.GetScore(Ones); got != 3 {
+		t.Errorf("expected Ones score 3, got %d", got)
+	}
+	if !sc2.IsFilled(Yahtzee) {
+		t.Error("expected Yahtzee to be filled (zero score) after round-trip")
+	}
+	if got := sc2.GetScore(Yahtzee); got != 0 {
+		t.Errorf("expected Yahtzee score 0, got %d", got)
+	}
+	if sc2.IsFilled(Twos) {
+		t.Error("expected Twos to be unfilled after round-trip")
 	}
 }

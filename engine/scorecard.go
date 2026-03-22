@@ -1,7 +1,29 @@
 package engine
 
+import "encoding/json"
+
 type Scorecard struct {
 	scores map[Category]*int
+}
+
+func (sc Scorecard) MarshalJSON() ([]byte, error) {
+	m := make(map[string]*int, len(sc.scores))
+	for k, v := range sc.scores {
+		m[string(k)] = v
+	}
+	return json.Marshal(m)
+}
+
+func (sc *Scorecard) UnmarshalJSON(data []byte) error {
+	var m map[string]*int
+	if err := json.Unmarshal(data, &m); err != nil {
+		return err
+	}
+	sc.scores = make(map[Category]*int, len(m))
+	for k, v := range m {
+		sc.scores[Category(k)] = v
+	}
+	return nil
 }
 
 func NewScorecard() Scorecard {

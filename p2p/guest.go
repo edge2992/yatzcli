@@ -23,12 +23,16 @@ type RemoteClient struct {
 
 	// responseCh delivers state_update/error responses to sendAction calls.
 	responseCh chan responseResult
+	// expectResponse is true when sendAction is waiting for a response.
+	// state_updates received while false are treated as broadcast updates
+	// (e.g., host's Roll/Hold/Score during host's turn) and are dropped
+	// after updating lastState, preventing listener deadlock.
+	expectResponse bool
+	expectMu       sync.Mutex
 	// turnCh delivers turn_start notifications (guest's turn begins).
 	turnCh chan *engine.GameState
 	// gameOverCh delivers game_over state.
 	gameOverCh chan *engine.GameState
-	// doneCh is closed when the listener exits.
-	doneCh chan struct{}
 	// listenErr holds any fatal error from the listener.
 	listenErr error
 	listenMu  sync.Mutex
@@ -91,7 +95,6 @@ func newRemoteClientFromConn(conn net.Conn, name string) (*RemoteClient, error) 
 		responseCh: make(chan responseResult, 1),
 		turnCh:     make(chan *engine.GameState, 1),
 		gameOverCh: make(chan *engine.GameState, 1),
-		doneCh:     make(chan struct{}),
 	}
 
 	go rc.listen()
@@ -101,7 +104,6 @@ func newRemoteClientFromConn(conn net.Conn, name string) (*RemoteClient, error) 
 
 // listen reads all messages from the host and dispatches them.
 func (rc *RemoteClient) listen() {
-	defer close(rc.doneCh)
 	for {
 		msg, err := ReadMessage(rc.conn)
 		if err != nil {
@@ -125,11 +127,23 @@ func (rc *RemoteClient) listen() {
 		case MsgStateUpdate:
 			sp, err := DecodeState(msg)
 			if err != nil {
-				rc.responseCh <- responseResult{err: fmt.Errorf("decode state_update: %w", err)}
+				rc.expectMu.Lock()
+				expecting := rc.expectResponse
+				rc.expectMu.Unlock()
+				if expecting {
+					rc.responseCh <- responseResult{err: fmt.Errorf("decode state_update: %w", err)}
+				}
 				continue
 			}
 			rc.setLastState(&sp.State)
-			rc.responseCh <- responseResult{state: &sp.State}
+			// Only deliver to responseCh if sendAction is waiting.
+			// Otherwise this is a broadcast from the host's own turn.
+			rc.expectMu.Lock()
+			expecting := rc.expectResponse
+			rc.expectMu.Unlock()
+			if expecting {
+				rc.responseCh <- responseResult{state: &sp.State}
+			}
 
 		case MsgError:
 			ep, err := DecodeError(msg)
@@ -173,14 +187,26 @@ func (rc *RemoteClient) getLastState() *engine.GameState {
 
 // sendAction sends an action and waits for the response from the listener.
 func (rc *RemoteClient) sendAction(ap ActionPayload) (*engine.GameState, error) {
+	rc.expectMu.Lock()
+	rc.expectResponse = true
+	rc.expectMu.Unlock()
+
 	rc.writeMu.Lock()
 	err := WriteMessage(rc.conn, NewActionMsg(ap))
 	rc.writeMu.Unlock()
 	if err != nil {
+		rc.expectMu.Lock()
+		rc.expectResponse = false
+		rc.expectMu.Unlock()
 		return nil, fmt.Errorf("send action: %w", err)
 	}
 
 	result := <-rc.responseCh
+
+	rc.expectMu.Lock()
+	rc.expectResponse = false
+	rc.expectMu.Unlock()
+
 	return result.state, result.err
 }
 

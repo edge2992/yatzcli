@@ -43,7 +43,11 @@ func newServer() *server.MCPServer {
 
 	holdDiceTool := mcp.NewTool("hold_dice",
 		mcp.WithDescription("Hold specified dice and reroll the others. Indices are 0-4."),
-		mcp.WithString("indices", mcp.Required(), mcp.Description("JSON array of dice indices to hold, e.g. [0,2,4]")),
+		mcp.WithArray("indices",
+			mcp.Required(),
+			mcp.Description("Array of dice indices to hold, e.g. [0,2,4]"),
+			mcp.Items(map[string]any{"type": "integer"}),
+		),
 	)
 	s.AddTool(holdDiceTool, gs.handleHoldDice)
 
