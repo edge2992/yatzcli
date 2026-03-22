@@ -97,25 +97,35 @@ Choosing → Finished  (all 13 rounds complete)
 - `(g *Game) GetAvailableCategories() []Category`
 - `(g *Game) GetState() GameState` — Read-only current state
 
-All methods validate the current Phase and return errors on invalid operations. Dice RNG is internal to the engine.
+All methods validate the current Phase and return errors on invalid operations.
+
+**Hold + Roll semantics:** `Hold(indices)` sets which dice to keep and immediately rerolls the rest (combines hold and roll in one call). `Roll()` is used only for the initial roll of a turn (RollCount == 0). Subsequent rolls must go through `Hold()`.
+
+**RNG:** The engine accepts an optional `rand.Source` for deterministic testing. If nil, it uses `rand.NewSource(time.Now().UnixNano())`.
 
 ### Scoring
 
 - **Upper Section (Ones-Sixes):** Sum of matching die values. Bonus of 35 if upper total >= 63.
 - **Lower Section:** Three of a Kind (sum), Four of a Kind (sum), Full House (25), Small Straight (30), Large Straight (40), Yahtzee (50), Chance (sum).
+- **Zero scoring:** If a player chooses a category whose conditions are not met (e.g., Full House without a valid combination), 0 is recorded. This is not an error.
+- **Yahtzee Bonus / Joker rules are not implemented in the initial release** (see Non-Goals).
 
 ## 2. GameClient Interface
 
 Abstraction layer that decouples UI/MCP from local vs remote game access.
 
 ```go
+type Category string  // e.g., "ones", "full_house", "yahtzee"
+
 type GameClient interface {
     Roll() (*GameState, error)
     Hold(indices []int) (*GameState, error)
-    Score(category string) (*GameState, error)
+    Score(category Category) (*GameState, error)
     GetState() (*GameState, error)
 }
 ```
+
+`Category` is a string type. MCP and CLI layers use the same string values, so no conversion is needed at the interface boundary.
 
 Implementations:
 - `LocalClient` — Wraps `engine.Game` directly (for local play and host)
@@ -129,7 +139,7 @@ Exposes game as MCP tools via stdio transport. Started with `yatz mcp`.
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
-| `new_game` | Start a new game | `opponents: int` (default 1) |
+| `new_game` | Start a new game | `opponents: int` (1-3, default 1) |
 | `roll_dice` | Roll the dice | none |
 | `hold_dice` | Hold dice and reroll others | `indices: []int` (0-4) |
 | `score` | Choose scoring category | `category: string` |
@@ -190,6 +200,12 @@ JSON over TCP. Messages: `{type: string, payload: object}`.
 - Plays as a participant and serves game state to guest
 - Host uses `LocalClient`, guest uses `RemoteClient`
 
+**Host's own turn:** Host operates the engine directly via `LocalClient`. After each action (Roll/Hold/Score), host sends `state_update` to guest. Guest receives `turn_start` at the beginning of every turn (both host's and guest's) so it can display the current game state.
+
+**Disconnection:** If TCP connection drops mid-game, the game ends immediately. No reconnection or state recovery in initial release.
+
+**Invalid actions:** Host validates all guest actions via the engine. Invalid actions return an `error` message; game state is unchanged.
+
 ## 5. Matchmaking (`match/` + `lambda/`)
 
 Serverless matchmaking to find opponents and establish P2P connections.
@@ -219,11 +235,15 @@ WaitingPlayers:
   - TTL: timestamp (5 min auto-delete)
 ```
 
+### Endpoint Detection
+
+When a client connects to the matchmaking WebSocket, the Lambda function detects the client's public IP from the API Gateway request context (`requestContext.identity.sourceIp`). The client provides its listening port via the initial message. Alternatively, users can specify `--endpoint ip:port` manually.
+
 ### Cost
 
 - DynamoDB on-demand: ~$0 at low usage
 - Lambda: pay-per-request only
-- API Gateway WebSocket: minimal (disconnect after match)
+- API Gateway WebSocket: connection-minute based pricing ($0.25/million connection-minutes). Connections are short-lived (disconnect after match), so cost is negligible at low usage.
 
 ### NAT Traversal
 
@@ -264,10 +284,20 @@ Interactive TUI for human play.
 - GoReleaser + GitHub Actions for multi-platform binary releases (linux/mac/windows, amd64/arm64)
 - Release triggered by git tags
 
+## 10. Testing Strategy
+
+- **Engine:** Comprehensive unit tests with deterministic RNG (seeded `rand.Source`). Cover all scoring categories, state transitions, and edge cases (invalid operations, boundary conditions).
+- **GameClient:** Test `LocalClient` against engine directly. Test `RemoteClient` with a mock TCP server.
+- **P2P:** Integration tests using loopback TCP connections.
+- **MCP:** Test tool handlers with mock engine.
+- **Matchmaking Lambda:** Unit tests with mock DynamoDB.
+
 ## Non-Goals
 
 - Web UI or mobile client
 - Advanced AI strategies (simple greedy is sufficient)
+- Yahtzee Bonus / Joker rules in initial release
 - NAT traversal (STUN/TURN) in initial release
 - Spectator mode
+- Reconnection / state recovery on disconnect
 - More than 2 players in P2P (can be added later)
