@@ -124,6 +124,8 @@ func init() {
 	botCmd.Flags().String("strategy", "", "Path to strategy file (uses built-in if empty)")
 	botCmd.Flags().StringP("model", "m", "claude-haiku-4-5-20251001", "Claude model to use (e.g. claude-haiku-4-5-20251001, claude-sonnet-4-6)")
 	rootCmd.AddCommand(botCmd)
+
+	rootCmd.AddCommand(battleCmd)
 }
 
 func main() {

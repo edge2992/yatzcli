@@ -8,10 +8,12 @@ type GameClient interface {
 }
 
 type AITurnResult struct {
-	PlayerName string
-	Dice       [5]int
-	Category   Category
-	Score      int
+	PlayerName   string
+	Dice         [5]int
+	Category     Category
+	Score        int
+	StrategyName string
+	HoldHistory  []HoldStep
 }
 
 type LocalClient struct {
