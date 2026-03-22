@@ -55,13 +55,18 @@ func (c *LocalClient) runAITurns() error {
 		if current.ID == c.playerID {
 			break
 		}
+		found := false
 		for _, ai := range c.ais {
 			if ai.playerID == current.ID {
 				if err := ai.PlayTurn(); err != nil {
 					return err
 				}
+				found = true
 				break
 			}
+		}
+		if !found {
+			break
 		}
 	}
 	return nil
