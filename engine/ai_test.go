@@ -21,8 +21,15 @@ func TestAIPlayer_PlayTurn(t *testing.T) {
 	}
 
 	// AI plays
-	if err := ai.PlayTurn(); err != nil {
+	result, err := ai.PlayTurn()
+	if err != nil {
 		t.Fatalf("AI PlayTurn() failed: %v", err)
+	}
+	if result.PlayerName != "AI" {
+		t.Errorf("expected PlayerName=AI, got %s", result.PlayerName)
+	}
+	if result.Dice == [5]int{} {
+		t.Error("expected non-zero dice in result")
 	}
 
 	// Should be back to human's turn
@@ -50,7 +57,7 @@ func TestAIPlayer_PlayTurn_NotMyTurn(t *testing.T) {
 	ai := NewAIPlayer(g, "player-1")
 
 	// It's human's turn (player-0), AI should fail
-	err := ai.PlayTurn()
+	_, err := ai.PlayTurn()
 	if err == nil {
 		t.Error("expected error when not AI's turn, got nil")
 	}

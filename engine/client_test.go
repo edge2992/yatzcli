@@ -100,6 +100,27 @@ func TestLocalClient_ScoreTriggersAI(t *testing.T) {
 	}
 }
 
+func TestLocalClient_RunAITurns_BreaksForRemoteHuman(t *testing.T) {
+	// Simulate P2P scenario: two human players, no AIs.
+	// After player-0 scores, it becomes player-1's turn.
+	// runAITurns must return immediately (not loop forever).
+	g := NewGame([]string{"Host", "Guest"}, rand.NewSource(42))
+	c := NewLocalClient(g, "player-0", nil)
+
+	if _, err := c.Roll(); err != nil {
+		t.Fatalf("Roll() failed: %v", err)
+	}
+	state, err := c.Score(Ones)
+	if err != nil {
+		t.Fatalf("Score() failed: %v", err)
+	}
+
+	// Current player should be the guest (player-1), not stuck in a loop.
+	if state.CurrentPlayer != "player-1" {
+		t.Errorf("expected player-1's turn, got %s", state.CurrentPlayer)
+	}
+}
+
 func TestLocalClient_GetState(t *testing.T) {
 	g := NewGame([]string{"Alice"}, rand.NewSource(42))
 	c := NewLocalClient(g, "player-0", nil)
