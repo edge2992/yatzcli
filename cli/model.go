@@ -9,6 +9,14 @@ import (
 	"github.com/edge2992/yatzcli/engine"
 )
 
+// ChatEntry is a generic chat message for the TUI (no dependency on p2p).
+type ChatEntry struct {
+	Name string
+	Text string
+}
+
+type chatMsg ChatEntry
+
 type uiState int
 
 const (
@@ -23,8 +31,10 @@ type model struct {
 	state      uiState
 	held       [5]bool
 	cursor     int
-	lastState  *engine.GameState
-	err        string
+	lastState    *engine.GameState
+	err          string
+	chatMessages []ChatEntry
+	chatCh       <-chan ChatEntry
 }
 
 func newModel(client engine.GameClient, playerName string) model {
@@ -36,12 +46,34 @@ func newModel(client engine.GameClient, playerName string) model {
 	}
 }
 
+func listenForChat(chatCh <-chan ChatEntry) tea.Cmd {
+	return func() tea.Msg {
+		ce, ok := <-chatCh
+		if !ok {
+			return nil
+		}
+		return chatMsg(ce)
+	}
+}
+
 func (m model) Init() tea.Cmd {
+	if m.chatCh != nil {
+		return listenForChat(m.chatCh)
+	}
 	return nil
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case chatMsg:
+		m.chatMessages = append(m.chatMessages, ChatEntry(msg))
+		if len(m.chatMessages) > 5 {
+			m.chatMessages = m.chatMessages[len(m.chatMessages)-5:]
+		}
+		if m.chatCh != nil {
+			return m, listenForChat(m.chatCh)
+		}
+		return m, nil
 	case tea.KeyPressMsg:
 		m.err = ""
 		switch m.state {
@@ -165,6 +197,8 @@ func (m model) View() tea.View {
 		m.viewGameOver(&b)
 	}
 
+	m.viewChat(&b)
+
 	if m.err != "" {
 		b.WriteString(fmt.Sprintf("\n  Error: %s\n", m.err))
 	}
@@ -232,6 +266,16 @@ func (m model) viewGameOver(b *strings.Builder) {
 	}
 	b.WriteString(fmt.Sprintf("  Winner: %s with %d points!\n\n", winner.Name, winner.Scorecard.Total()))
 	b.WriteString("  [q] Quit\n")
+}
+
+func (m model) viewChat(b *strings.Builder) {
+	if len(m.chatMessages) == 0 {
+		return
+	}
+	b.WriteString("\n  ─── Chat ────────────────────────\n")
+	for _, c := range m.chatMessages {
+		b.WriteString(fmt.Sprintf("  %s: %s\n", c.Name, c.Text))
+	}
 }
 
 func (m model) viewDice(b *strings.Builder) {

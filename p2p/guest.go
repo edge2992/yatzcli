@@ -333,5 +333,12 @@ func RunGuest(addr string, name string) error {
 		}
 	}
 
-	return cli.RunGame(rc, name)
+	chatCh := make(chan cli.ChatEntry, 16)
+	go func() {
+		for cp := range rc.ChatCh() {
+			chatCh <- cli.ChatEntry{Name: cp.Name, Text: cp.Text}
+		}
+		close(chatCh)
+	}()
+	return cli.RunGame(rc, name, cli.WithChatChannel(chatCh))
 }
