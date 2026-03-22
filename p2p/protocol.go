@@ -17,6 +17,7 @@ const (
 	MsgStateUpdate = "state_update"
 	MsgGameOver    = "game_over"
 	MsgError       = "error"
+	MsgChat        = "chat"
 )
 
 const (
@@ -31,7 +32,8 @@ type Message struct {
 }
 
 type HandshakePayload struct {
-	Name string `json:"name"`
+	Name     string `json:"name"`
+	PlayerID string `json:"player_id,omitempty"`
 }
 
 type ActionPayload struct {
@@ -46,6 +48,12 @@ type StatePayload struct {
 
 type ErrorPayload struct {
 	Message string `json:"message"`
+}
+
+type ChatPayload struct {
+	PlayerID string `json:"player_id"`
+	Name     string `json:"name"`
+	Text     string `json:"text"`
 }
 
 // WriteMessage writes a length-prefixed (uint32 big-endian) JSON message to w.
@@ -144,6 +152,18 @@ func DecodeState(msg *Message) (*StatePayload, error) {
 	var p StatePayload
 	if err := json.Unmarshal(msg.Payload, &p); err != nil {
 		return nil, fmt.Errorf("decode state: %w", err)
+	}
+	return &p, nil
+}
+
+func NewChatMsg(playerID, name, text string) *Message {
+	return newMessage(MsgChat, ChatPayload{PlayerID: playerID, Name: name, Text: text})
+}
+
+func DecodeChat(msg *Message) (*ChatPayload, error) {
+	var p ChatPayload
+	if err := json.Unmarshal(msg.Payload, &p); err != nil {
+		return nil, fmt.Errorf("decode chat: %w", err)
 	}
 	return &p, nil
 }
