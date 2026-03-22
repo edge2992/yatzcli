@@ -6,6 +6,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/stretchr/testify/assert"
 )
 
 func setupClient(t *testing.T) *client.Client {
@@ -312,4 +313,24 @@ func containsStr(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func TestWaitForTurnRequiresOnlineGame(t *testing.T) {
+	c := setupClient(t)
+	// No game started — should error
+	result := callTool(t, c, "wait_for_turn", nil)
+	text := getText(t, result)
+	assert.True(t, result.IsError)
+	assert.Contains(t, text, "Not connected")
+}
+
+func TestWaitForTurnRejectsLocalGame(t *testing.T) {
+	c := setupClient(t)
+	// Start a local game
+	callTool(t, c, "new_game", map[string]interface{}{"opponents": 1})
+	// wait_for_turn should reject local games
+	result := callTool(t, c, "wait_for_turn", nil)
+	text := getText(t, result)
+	assert.True(t, result.IsError)
+	assert.Contains(t, text, "Not connected")
 }

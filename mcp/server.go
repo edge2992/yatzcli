@@ -83,6 +83,11 @@ func newServer() *server.MCPServer {
 	)
 	s.AddTool(sendChatTool, gs.handleSendChat)
 
+	waitForTurnTool := mcp.NewTool("wait_for_turn",
+		mcp.WithDescription("Wait for your turn during an online game. Blocks until it's your turn or game ends. Only use at game start if you're the second player. Do NOT use after scoring — score already waits for opponent."),
+	)
+	s.AddTool(waitForTurnTool, gs.handleWaitForTurn)
+
 	return s
 }
 
@@ -258,6 +263,27 @@ func (gs *gameServer) handleSendChat(_ context.Context, req mcp.CallToolRequest)
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to send: %v", err)), nil
 	}
 	return mcp.NewToolResultText("Chat sent."), nil
+}
+
+func (gs *gameServer) handleWaitForTurn(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	rc, ok := gs.client.(*p2p.RemoteClient)
+	if !ok {
+		return mcp.NewToolResultError("Not connected to a game server. Use join_game first."), nil
+	}
+
+	state, isGameOver, err := rc.WaitForTurn()
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Connection error: %v", err)), nil
+	}
+
+	if isGameOver {
+		var sb strings.Builder
+		sb.WriteString("Game Over!\n\n")
+		sb.WriteString(formatFinalScores(state))
+		return mcp.NewToolResultText(sb.String()), nil
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Your turn!\n\n%s", formatState(state))), nil
 }
 
 func formatDice(dice [5]int) string {
