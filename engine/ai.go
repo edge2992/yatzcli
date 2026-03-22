@@ -49,9 +49,13 @@ func (ai *AIPlayer) PlayTurn() (AITurnResult, error) {
 			continue
 		}
 
-		// Score
+		// Score — if strategy returned "hold" but no more rolls remain,
+		// fall back to best available category.
 		dice := ai.game.Dice
 		category := action.Category
+		if action.Type != "score" || category == "" {
+			category = bestCategoryForDice(dice, available)
+		}
 		score := CalcScore(category, dice)
 		if err := ai.game.Score(category); err != nil {
 			return AITurnResult{}, err
