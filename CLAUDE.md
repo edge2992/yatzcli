@@ -34,6 +34,7 @@ mcp/        MCP server for LLM integration (mcp-go, stdio transport)
 p2p/        P2P host-authority online play (length-prefixed JSON over TCP)
 match/      Matchmaking WebSocket client
 lambda/     Serverless matchmaking handler (AWS Lambda + API Gateway + DynamoDB)
+bot/        LLM bot integration (MCP config, system prompt, Claude API interaction)
 ```
 
 ## Key Design Decisions
